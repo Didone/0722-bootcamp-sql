@@ -8,7 +8,7 @@
 
 Python module to manage [CSV](https://en.wikipedia.org/wiki/Comma-separated_values) data like a [DBMS](https://en.wikipedia.org/wiki/Database#Database_management_system) application with educational purposes
 
-![logo](https://raw.githubusercontent.com/Didone/csvms/main/img/logo.png)
+![logo](https://raw.githubusercontent.com/Didone/0722-bootcamp-sql/main/img/logo.png)
 
 ## Installation
 
