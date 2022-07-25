@@ -1,0 +1,24 @@
+# Poetry
+dist/
+poetry.lock
+# IDE
+.vscode/
+# Pytest
+.pytest_cache
+tests/data/
+# Cache
+__pycache__
+# Temp files
+data/
+redo
+metastore_db/
+spark-warehouse/
+*.log
+scripts/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
