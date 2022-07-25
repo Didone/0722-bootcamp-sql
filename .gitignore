@@ -1,0 +1,16 @@
+# Poetry
+dist/
+poetry.lock
+# IDE
+.vscode/
+# Pytest
+.pytest_cache
+tests/data/
+# Cache
+__pycache__
+# Temp files
+data/
+tmp.py
+*.ipynb
+csvms/extended.py
+tests/test_scripts.py

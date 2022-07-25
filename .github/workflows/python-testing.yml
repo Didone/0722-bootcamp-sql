@@ -1,0 +1,51 @@
+#Python testing CI workflow
+#Each time a pull request is open on the main branch, an environment is configured with poetry and then the unit tests are tested with pytest
+
+name: Python testing
+
+on: 
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    #This job is run in the latest ubuntu and the tests are made on python 3.8 and 3.9 
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+    steps:
+      - uses: actions/checkout@v2 
+      - name: Set up Python ${{ matrix.python-version }} version
+        uses: actions/setup-python@v2   
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install and configure Poetry from snok repository  
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.1.7
+          #Create a new virtual environment if one doesn’t already exist.
+          virtualenvs-create: true
+          # Create a virtualenv inside the project’s root directory.
+          virtualenvs-in-project: true
+
+      - name: Load cached venv if cache exists
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install root project if needed
+        run: poetry install -E bootcamp --no-interaction
+
+      - name: Test Core
+        run: |
+          source .venv/bin/activate
+          pytest tests/core
+
+      - name: Test Bootcamp issues
+        run: |
+          source .venv/bin/activate
+          pytest tests/tasks
