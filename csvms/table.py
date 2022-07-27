@@ -86,6 +86,8 @@ class Table():
         'sub': lambda x,y: None if x is None or y is None else x-y,
         'div': lambda x,y: None if x is None or y is None else x/y,
         'mul': lambda x,y: None if x is None or y is None else x*y,
+        'ifnull': lambda x,y: y if x is None else x,
+        'coalesce': lambda x,y: y if x is None else x,
         #TODO: Concatenate two string
         #TODO: Raises expr1 to the power of expr2.
     }
