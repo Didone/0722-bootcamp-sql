@@ -43,23 +43,39 @@ class Engine():
                 tbl_values=ast['query']['select']
             )
 
+        elif ast.get('update') is not None:
+            self.nome_tabela = list(ast.values())[2]
+            operation = list(ast['where'].keys())[0]
+
+            if self.tbl == None:
+                self.tbl = Table(self.nome_tabela)
+            
+            return self._update(
+                update_value=[list(ast['set'].keys())[0], list(ast['set']['tp_fruta'].values())[0]],
+                update_condicion=[
+                    operation,                                      # operador
+                    ast['where'][operation][0],                     # nome da coluna
+                    list(ast['where'][operation][1].values())[0]    # valor
+                ]     
+            )
+
         else:
             print('Execução finalizada!')
 
 
     def _multiple_statements(self, sql:str):
         if '\n' in sql:
-            list_comands = sub('[\n]', '', sql).split(';')[:-1]
+            list_comands = sub('[\n]', ' ', sql).split(';')[:-1]
         else:
             list_comands = sql.split(';')[:-1]
         
         for execution in list_comands:
-            if execution.upper() == 'COMMIT':
+            if execution.upper().strip() == 'COMMIT':
                 # Table(self.nome_tabela).save()
                 self.tbl.save()
-                return f'FOi realiizado o COMMIT na tabela {self.nome_tabela}'
+                print(f'COMMIT na tabela {self.nome_tabela} foi realizado com sucesso!')
             else:
-                self.execute(execution)
+                self.execute(execution.strip())
 
 
     def _create_table(self, tbl_name:str, tbl_columns:list):
@@ -84,3 +100,16 @@ class Engine():
             values.append(_v_['value']['literal'])
 
         self.tbl.append(*values)
+
+    
+    def _update(self,update_value:list, update_condicion:list):
+        for idx in range(len(self.tbl)):
+            if Table.operations[update_condicion[0]](self.tbl[idx][update_condicion[1]], update_condicion[2]):
+                # Armazena o conteudo da linha
+                row = self.tbl[idx]
+                # Altera o valor da linha selecionado
+                row[update_value[0]]=update_value[1]
+                # Atualiza a linha, já como valor novo, na tabela
+                self.tbl[idx] = tuple(row.values())
+
+
