@@ -59,6 +59,21 @@ class Engine():
                 ]     
             )
 
+        elif ast.get('delete') is not None:
+            self.nome_tabela = list(ast.values())[1]
+            operation = list(ast['where'].keys())[0]
+
+            if self.tbl == None:
+                self.tbl = Table(self.nome_tabela)
+
+            return self._delete(
+                update_condicion=[
+                    operation,                                      # operador
+                    ast['where'][operation][0],                     # nome da coluna
+                    list(ast['where'][operation][1].values())[0]    # valor
+                ] 
+            )
+
         else:
             print('Execução finalizada!')
 
@@ -112,4 +127,11 @@ class Engine():
                 # Atualiza a linha, já como valor novo, na tabela
                 self.tbl[idx] = tuple(row.values())
 
+
+    def _delete(self, update_condicion:list):
+        print(self.tbl)
+        for idx in range(len(self.tbl)):
+            if Table.operations[update_condicion[0]](self.tbl[idx][update_condicion[1]], update_condicion[2]):
+                del self.tbl[idx]
+        print(self.tbl)
 
