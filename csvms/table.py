@@ -705,15 +705,43 @@ class Table():
         left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
         left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
         left_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+
         for row_left_table in self:    # For each row in left table
-            for row_right_table in other.σ({list(where.keys())[0]:[list(where.values())[0][1].split('.')[1],row_left_table[list(left_cols.keys()).index(list(where.values())[0][0])]]}, null=True):    # For each row in right table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
                 left_rows.append(row_left_table + row_right_table)
         
         return Table(
             name=f"({self.name}ᗌᐊ{other.name})",
             columns=left_cols,
             data=left_rows)
-                   
+
+
+    def ᐅᗏ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        right_cols = dict()
+        right_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        right_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                right_rows.append(row_left_table + row_right_table)
+
+        return Table(
+            name=f"({self.name}ᐅᗏ{other.name})",
+            columns=right_cols,
+            data=right_rows)           
+
 
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
