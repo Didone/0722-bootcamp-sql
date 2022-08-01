@@ -34,6 +34,9 @@ class Engine():
         elif sql.lower().startswith(self.keywords['insert']) or sql.lower().__contains__(self.keywords['insert']):
             if not self._insert_into(sql):
                 raise Exception('Error inserting into table')
+        elif sql.lower().startswith(self.keywords['update']) or sql.lower().__contains__(self.keywords['update']):
+            if not self._update(sql):
+                raise Exception('Error updating table')
         else:
             raise NotImplementedError('SQL statement not implemented')
 
@@ -128,6 +131,62 @@ class Engine():
             return True
         else:
             raise Exception('Error inserting into table')
+
+    def _update(self, rawSQL: str) -> bool:
+        """Update table
+        :param rawSQL: raw SQL statement"""
+
+        listUpdate = self._preprocess_rawsql(rawSQL)
+        commit = False
+        if ('COMMIT' in listUpdate):
+            listUpdate.remove('COMMIT')
+            commit = True
+
+        parsedUpdate = parse(listUpdate[0])
+        parsedDict = {}
+        for idx in parsedUpdate:
+            if idx == 'set':
+                fields = parsedUpdate[idx]
+                for key in fields:
+                    if type(fields[key]) == dict:
+                        fields[key] = next(enumerate(fields[key].values()))[1]
+                    parsedDict['fields'] = {key: fields[key]}
+            elif idx == 'where':
+                criteria = parsedUpdate[idx]
+                for key in criteria:
+                    if type(criteria[key]) == dict:
+                        criteria[key] = next(
+                            enumerate(criteria[key].values()))[1]
+                    elif(type(criteria[key]) == list):
+                        if(type(criteria[key][1]) == dict):
+                            criteria[key][1] = next(
+                                enumerate(criteria[key][1].values()))[1]
+
+                    parsedDict['criteria'] = {
+                        criteria[key][0]: criteria[key][1]}
+                    parsedDict['op'] = key
+
+            elif idx == 'update':
+                parsedDict['table'] = parsedUpdate[idx]
+
+        table = Table(name=parsedDict['table'])
+
+        for idx in range(len(table)):
+            fieldCriteria = next(enumerate(parsedDict['criteria'].keys()))[1]
+            valueCriteria = next(enumerate(parsedDict['criteria'].values()))[1]
+            fieldUpdate = next(enumerate(parsedDict['fields'].keys()))[1]
+            valueUpdate = next(enumerate(parsedDict['fields'].values()))[1]
+            if table[idx][fieldCriteria] == valueCriteria:
+                row = table[idx]
+                row[fieldUpdate] = valueUpdate
+                table[idx] = tuple(row.values())
+
+        if commit:
+            if table.save():
+                print('Update successful')
+                return True
+            else:
+                raise Exception('Error updating table')
 
     def _preprocess_rawsql(self, rawSQL: str) -> list:
         """Preprocess raw SQL statement
