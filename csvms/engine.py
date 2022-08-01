@@ -74,8 +74,6 @@ class Engine():
                 ] 
             )
 
-        else:
-            print('Execução finalizada!')
 
 
     def _multiple_statements(self, sql:str):
@@ -112,8 +110,11 @@ class Engine():
 
         values = list()
         for _v_ in tbl_values:
-            values.append(_v_['value']['literal'])
-
+            try:
+                values.append(_v_['value']['literal'])
+            except TypeError:
+                values.append(_v_['value'])
+                
         self.tbl.append(*values)
 
     
