@@ -89,6 +89,7 @@ class Table():
         'ifnull': lambda x,y: y if x is None else x,
         'coalesce': lambda x,y: y if x is None else x,
         #TODO: Concatenate two string
+        'concat': lambda x,y: None if x is None or y is None else str(x)+str(y),
         #TODO: Raises expr1 to the power of expr2.
     }
     # Supported operations in reverse

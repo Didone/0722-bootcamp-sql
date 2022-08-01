@@ -87,6 +87,7 @@ class Engine():
                 # Table(self.nome_tabela).save()
                 self.tbl.save()
                 print(f'COMMIT na tabela {self.nome_tabela} foi realizado com sucesso!')
+                self.tbl = None
             else:
                 self.execute(execution.strip())
 
@@ -130,9 +131,8 @@ class Engine():
 
 
     def _delete(self, update_condicion:list):
-        print(self.tbl)
         for idx in range(len(self.tbl)):
             if Table.operations[update_condicion[0]](self.tbl[idx][update_condicion[1]], update_condicion[2]):
                 del self.tbl[idx]
-        print(self.tbl)
+
 
