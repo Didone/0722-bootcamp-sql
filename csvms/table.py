@@ -90,6 +90,7 @@ class Table():
         'div': lambda x, y: None if x is None or y is None else x/y,
         'mul': lambda x, y: None if x is None or y is None else x*y,
         'concat': lambda x, y: None if x is None or y is None else str(x)+str(y),
+        'pow': lambda x, y: None if x is None or y is None else x**y,
         'ifnull': lambda x, y: y if x is None else x,
         'coalesce': lambda x, y: y if x is None else x,
         # TODO: Concatenate two string
