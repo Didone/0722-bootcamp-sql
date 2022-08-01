@@ -37,6 +37,9 @@ class Engine():
         elif sql.lower().startswith(self.keywords['update']) or sql.lower().__contains__(self.keywords['update']):
             if not self._update(sql):
                 raise Exception('Error updating table')
+        elif sql.lower().startswith(self.keywords['delete']) or sql.lower().__contains__(self.keywords['delete']):
+            if not self._delete(sql):
+                raise Exception('Error deleting from table')
         else:
             raise NotImplementedError('SQL statement not implemented')
 
@@ -187,6 +190,51 @@ class Engine():
                 return True
             else:
                 raise Exception('Error updating table')
+
+    def _delete(self, rawSQL: str) -> bool:
+        """Delete from table
+        :param rawSQL: raw SQL statement"""
+
+        listDelete = self._preprocess_rawsql(rawSQL)
+        commit = False
+        if ('COMMIT' in listDelete):
+            listDelete.remove('COMMIT')
+            commit = True
+
+        parsedDelete = parse(listDelete[0])
+        parsedDict = {}
+        for idx in parsedDelete:
+            if idx == 'where':
+                criteria = parsedDelete[idx]
+                for key in criteria:
+                    if type(criteria[key]) == dict:
+                        criteria[key] = next(
+                            enumerate(criteria[key].values()))[1]
+                    elif(type(criteria[key]) == list):
+                        if(type(criteria[key][1]) == dict):
+                            criteria[key][1] = next(
+                                enumerate(criteria[key][1].values()))[1]
+
+                    parsedDict['criteria'] = {
+                        criteria[key][0]: criteria[key][1]}
+                    parsedDict['op'] = key
+            elif idx == 'delete':
+                parsedDict['table'] = parsedDelete[idx]
+
+        table = Table(name=parsedDict['table'])
+
+        for idx in range(len(table)):
+            fieldCriteria = next(enumerate(parsedDict['criteria'].keys()))[1]
+            valueCriteria = next(enumerate(parsedDict['criteria'].values()))[1]
+            if table[idx][fieldCriteria] == valueCriteria:
+                del table[idx]
+
+        if commit:
+            if table.save():
+                print('Delete successful')
+                return True
+            else:
+                raise Exception('Error deleting from table')
 
     def _preprocess_rawsql(self, rawSQL: str) -> list:
         """Preprocess raw SQL statement
