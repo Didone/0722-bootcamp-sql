@@ -31,6 +31,9 @@ class Engine():
         if sql.lower().startswith(self.keywords['table']) or sql.lower().__contains__(self.keywords['table']):
             if not self._create_table(sql):
                 raise Exception('Error creating table')
+        elif sql.lower().startswith(self.keywords['insert']) or sql.lower().__contains__(self.keywords['insert']):
+            if not self._insert_into(sql):
+                raise Exception('Error inserting into table')
         else:
             raise NotImplementedError('SQL statement not implemented')
 
@@ -71,3 +74,68 @@ class Engine():
         :param columns: columns to be casted
         :param dtype: dictionary with dtypes"""
         return {k: dtype[v] for k, v in columns.items()}
+
+    def _insert_into(self, rawSQL: str) -> bool:
+        """Insert into table
+        :param rawSQL: raw SQL statement"""
+        # parse SQL statement
+
+        # preprocess raw SQL statement
+        listInserts = self._preprocess_rawsql(rawSQL)
+        print(listInserts)
+
+        commit = False
+
+        # verify if there is a commit
+        if('COMMIT' in listInserts):
+            listInserts.remove('COMMIT')
+            commit = True
+
+        # parse each insert statement
+        parsedInserts = []
+        for insert in listInserts:
+            parsedInserts.append(parse(insert))
+
+        # create a dictionary with table name and your list of data to be inserted
+        jobs = {}
+        for statement in parsedInserts:
+            valuesInsert = []
+            for value in statement['query']['select']:
+                if type(value['value']) == dict:
+                    value = next(enumerate(value['value'].values()))[1]
+                else:
+                    value = value['value']
+                valuesInsert.append(value)
+            try:
+                jobs[statement['insert']].append(valuesInsert)
+            except KeyError:
+                jobs[statement['insert']] = [valuesInsert]
+
+        # insert data into table and check if it was successful
+        control = []
+        for key, lista in jobs.items():
+            table = Table(name=key)
+            for values in lista:
+                table.append(*values)
+
+            # commit if it was requested
+            if commit:
+                control.append(table.save())
+
+        # check if all inserts were successful
+        if False not in control:
+            print('Inserts successful')
+            return True
+        else:
+            raise Exception('Error inserting into table')
+
+    def _preprocess_rawsql(self, rawSQL: str) -> list:
+        """Preprocess raw SQL statement
+        :param rawSQL: raw SQL statement"""
+        raw_sql = list(map(str.strip, rawSQL.split('\n')))
+        for x in raw_sql:
+            if x.__contains__('--'):
+                raw_sql.remove(x)
+        raw_sql = ' '.join(raw_sql)
+        return [x for x in list(
+            map(str.strip, raw_sql.split(';'))) if x != '']
