@@ -700,6 +700,21 @@ class Table():
             columns=cols,
             data=rows)
 
+    def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        left_cols = dict()
+        left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({list(where.keys())[0]:[list(where.values())[0][1].split('.')[1],row_left_table[list(left_cols.keys()).index(list(where.values())[0][0])]]}, null=True):    # For each row in right table
+                left_rows.append(row_left_table + row_right_table)
+        
+        return Table(
+            name=f"({self.name}ᗌᐊ{other.name})",
+            columns=left_cols,
+            data=left_rows)
+                   
+
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
