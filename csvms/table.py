@@ -726,6 +726,44 @@ class Table():
             columns=right_cols,
             data=right_rows)
 
+    def ᗌᗏ(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """Full Join Operator (ᗌᗏ)"""
+        [tableAndFields] = [v for _k, v in where.items()]
+        full_cols = dict()
+        full_cols.update({f'{self.name}.{k}': v for k,
+                         v in self.columns.items()})
+        full_cols.update({f'{other.name}.{k}': v for k,
+                         v in other.columns.items()})
+        full_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        fieldSelf = ''
+        for tableAndField in tableAndFields:
+            if self.name == tableAndField.split('.')[0]:
+                fieldSelf = tableAndField.split('.')[1]
+                break
+
+        print(fieldSelf, targetField)
+
+        for line in self:
+            for line2 in other.σ({cond: [fieldSelf, line[1]]}, null=True):
+                full_rows.append(line + line2)
+
+        for line in other:
+            for line2 in self.σ({cond: [targetField, line[0]]}, null=True):
+                full_rows.append(line2 + line)
+
+        return Table(
+            name=f'({self.name}ᗌᗏ{other.name})',
+            columns=full_cols,
+            data=list(dict.fromkeys(full_rows)))
+
     def ρ(self, alias: str) -> "Table":
         """Rename Operator (ρ)"""
         # Function to rename column names for the new table name
