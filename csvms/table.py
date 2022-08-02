@@ -823,8 +823,27 @@ class Table():
             columns=self.columns,
             data=semi_left_rows)
 
-    # TODO: Implement LEFT SEMI join operator `ᐅᐸ`
-    # TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
+    def ᐳᐊ(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """ Semi Right Join Operator (ᐳᐊ)"""
+        [tableAndFields] = [v for _k, v in where.items()]
+        semi_right_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        for line in self:
+            for line2 in other.σ({cond: [targetField, line[0]]}, null=True):
+                semi_right_rows.append(line2)
+
+        return Table(
+            name=f'({self.name}ᐳᐊ{other.name})',
+            columns=other.columns,
+            data=semi_right_rows)
+
     # TODO: Implement LEFT ANTI join operator `ᐅ`
     # TODO: Implement RIGHT ANTI join operator `◁`
 
