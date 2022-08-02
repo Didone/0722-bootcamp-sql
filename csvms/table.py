@@ -695,13 +695,10 @@ class Table():
             for line2 in other.σ({cond: [targetField, line[1]]}, null=True):
                 left_rows.append(line + line2)
 
-        t = Table(
+        return Table(
             name=f'({self.name}ᗌᐊ{other.name})',
             columns=left_cols,
             data=left_rows)
-        print(t)
-
-        return t
 
     def ρ(self, alias: str) -> "Table":
         """Rename Operator (ρ)"""
