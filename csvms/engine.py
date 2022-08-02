@@ -88,6 +88,9 @@ class Engine():
                 self.tbl.save()
                 print(f'COMMIT na tabela {self.nome_tabela} foi realizado com sucesso!')
                 self.tbl = None
+            elif execution.upper().strip() == 'ROLLBACK':
+                self.tbl = None
+                print(f'Descartadas todas as alterações desta transação')
             else:
                 self.execute(execution.strip())
 

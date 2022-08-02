@@ -743,6 +743,36 @@ class Table():
             data=right_rows)           
 
 
+    def ᗌᗏ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        full_cols = dict()
+        full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        full_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        full_rows = list()
+
+        # σ values left join
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                full_rows.append(row_left_table + row_right_table)
+
+        # σ values right
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                full_rows.append(row_left_table + row_right_table)
+
+        return Table(
+            name=f"({self.name}ᗌᗏ{other.name})",
+            columns=full_cols,
+            data=list(dict.fromkeys(full_rows)))  
+
+
+
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
