@@ -67,13 +67,25 @@ class Engine():
                 self.tbl = Table(self.nome_tabela)
 
             return self._delete(
-                update_condicion=[
+                condicion=[
                     operation,                                      # operador
                     ast['where'][operation][0],                     # nome da coluna
                     list(ast['where'][operation][1].values())[0]    # valor
                 ] 
             )
+        
+        elif ast.get('select') is not None:
+            self.nome_tabela = ast.get('from')
+            columns = ast.get('select')
+            condition = ast.get('where')
 
+            if self.tbl == None:
+                self.tbl = Table(self.nome_tabela)
+
+            return self._select(
+                columns_name=columns,
+                select_condition = condition
+            )
 
 
     def _multiple_statements(self, sql:str):
@@ -133,9 +145,14 @@ class Engine():
                 self.tbl[idx] = tuple(row.values())
 
 
-    def _delete(self, update_condicion:list):
+    def _delete(self, condicion:list):
         for idx in range(len(self.tbl)):
-            if Table.operations[update_condicion[0]](self.tbl[idx][update_condicion[1]], update_condicion[2]):
+            if Table.operations[condicion[0]](self.tbl[idx][condicion[1]], condicion[2]):
                 del self.tbl[idx]
 
+    def _select(self, columns_name:list, select_condition:dict):
+        if select_condition == None:
+            return self.tbl.π(columns_name)
+        else:
+            return self.tbl.π(columns_name).σ(select_condition)
 
