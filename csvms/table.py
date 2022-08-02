@@ -844,7 +844,28 @@ class Table():
             columns=other.columns,
             data=semi_right_rows)
 
-    # TODO: Implement LEFT ANTI join operator `ᐅ`
+    def ᐅ(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """ Left Anti Join Operator (ᐅ)"""
+        [tableAndFields] = [v for _k, v in where.items()]
+        left_anti_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        for line in self:
+            for line2 in other.σ({cond: [targetField, line[1]]}, null=True):
+                if line2[0] is None:
+                    left_anti_rows.append(line)
+
+        return Table(
+            name=f'({self.name}ᐅ{other.name})',
+            columns=self.columns,
+            data=left_anti_rows)
+
     # TODO: Implement RIGHT ANTI join operator `◁`
 
 
