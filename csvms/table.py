@@ -93,8 +93,6 @@ class Table():
         'pow': lambda x, y: None if x is None or y is None else x**y,
         'ifnull': lambda x, y: y if x is None else x,
         'coalesce': lambda x, y: y if x is None else x,
-        # TODO: Concatenate two string
-        # TODO: Raises expr1 to the power of expr2.
     }
     # Supported operations in reverse
     _strtypes_ = {value: key for key, value in dtypes.items()}
@@ -674,6 +672,36 @@ class Table():
             .σ(where)  # And select rows where the join condition is true
         tbl.name = f"({self.name}⋈{other.name})"
         return tbl
+
+    def ᗌᐊ(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """Left Join Operator (ᗌᐊ)"""
+
+        [tableAndFields] = [v for _k, v in where.items()]
+        left_cols = dict()
+        left_cols.update({f'{self.name}.{k}': v for k,
+                         v in self.columns.items()})
+        left_cols.update({f'{other.name}.{k}': v for k,
+                         v in other.columns.items()})
+        left_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        for line in self:
+            for line2 in other.σ({cond: [targetField, line[1]]}, null=True):
+                left_rows.append(line + line2)
+
+        t = Table(
+            name=f'({self.name}ᗌᐊ{other.name})',
+            columns=left_cols,
+            data=left_rows)
+        print(t)
+
+        return t
 
     def ρ(self, alias: str) -> "Table":
         """Rename Operator (ρ)"""
