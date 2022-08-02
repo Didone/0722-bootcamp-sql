@@ -802,7 +802,27 @@ class Table():
             columns=cols,
             data=rows)
 
-    # TODO: Implement FULL join operator `ᗌᗏ`
+    def ᐅᐸ(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """ Semi Left Join Operator (ᐅᐸ)"""
+        [tableAndFields] = [v for _k, v in where.items()]
+        semi_left_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        for line in self:
+            for line2 in other.σ({cond: [targetField, line[1]]}, null=True):
+                semi_left_rows.append(line)
+
+        return Table(
+            name=f'({self.name}ᐅᐸ{other.name})',
+            columns=self.columns,
+            data=semi_left_rows)
+
     # TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     # TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
     # TODO: Implement LEFT ANTI join operator `ᐅ`
