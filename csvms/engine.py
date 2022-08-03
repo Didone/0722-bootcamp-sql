@@ -24,6 +24,19 @@ class Engine():
             querySplit = sql.split(";")
             querySplit.pop()
             return self._insert_table(querySplit,commitStatus)
+        elif sql.lower().find('update') >= 0:
+            queryToParse = ''
+            sql = sql.split("\n")
+            del sql[0]
+            for i in range(len(sql)):
+                if sql[i].find('COMMIT')<0:
+                    sql[i] = sql[i].replace(";","")
+                    sql[i] = sql[i].replace("\n","")
+                    sql[i] = sql[i].strip()
+                    print(sql[i])
+                    queryToParse = queryToParse + " " + sql[i]
+            queryToParse = queryToParse.strip()
+            return self._update_table(queryToParse)
         else:  
             return None
 
@@ -55,4 +68,23 @@ class Engine():
         if commitStatus == True:
             tbl.save()
         return f"Os valores na tabela {tbl_name} foram inseridos com sucesso"
+        
+   def _update_table(self, queryToParse:str):
+        ast = parse(queryToParse)
+        tblName = ast['update']
+        oldValue = ast['where']['eq'][1]['literal']
+        newValueCol = ast['set']
+        newValueCol = list(newValueCol.items())[0][0]
+        newValue = ast['set'][newValueCol]
+        newValue = list(newValue.items())[0][1]
+        oldValueCol = ast['where']['eq'][0]
+        tbl = Table(tblName)
+        for idx in range(len(tbl)):
+            if tbl[idx][oldValueCol]==oldValue:
+                row = tbl[idx]
+                row[newValueCol]=newValue
+                tbl[idx] = tuple(row.values())
+        tbl.save()
+        return f"Os valores na tabela {tblName} foram atualizados com sucesso"
+
     
