@@ -866,7 +866,35 @@ class Table():
             columns=self.columns,
             data=left_anti_rows)
 
-    # TODO: Implement RIGHT ANTI join operator `◁`
+    def raj(self, other: "Table", where: Dict[str, list]) -> "Table":
+        """ Right Anti Join Operator (ᐳ)"""
+        [tableAndFields] = [v for _k, v in where.items()]
+        right_anti_rows = list()
+
+        targetField = ''
+        for tableAndField in tableAndFields:
+            if other.name == tableAndField.split('.')[0]:
+                targetField = tableAndField.split('.')[1]
+                break
+        cond = list(where.keys())[0]
+
+        selfField = ''
+        for tableAndField in tableAndFields:
+            if self.name == tableAndField.split('.')[0]:
+                selfField = tableAndField.split('.')[1]
+                break
+
+        idxself = list(self.columns.keys()).index(selfField)
+        idxother = list(other.columns.keys()).index(targetField)
+
+        for line in self:
+            for line2 in other.σ({cond: [targetField, line[idxself]]}, null=True):
+                if line2[idxother] is None:
+                    right_anti_rows.append(line)
+        return Table(
+            name=f'({self.name}◁{other.name})',
+            columns=self.columns,
+            data=right_anti_rows)
 
 
 class Index():
