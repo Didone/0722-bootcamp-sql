@@ -4,6 +4,7 @@ See https://github.com/Didone/csvms/discussions/6
 from mo_sql_parsing import parse
 from csvms.table import Table
 from re import sub
+from typing import Union
 
 class Engine():
     """Class used to implement bootcamp tasks"""
@@ -75,14 +76,12 @@ class Engine():
             )
         
         elif ast.get('select') is not None:
-            self.nome_tabela = ast.get('from')
+            tables = ast.get('from')
             columns = ast.get('select')
             condition = ast.get('where')
 
-            if self.tbl == None:
-                self.tbl = Table(self.nome_tabela)
-
             return self._select(
+                tables_names=tables,
                 columns_name=columns,
                 select_condition = condition
             )
@@ -150,9 +149,18 @@ class Engine():
             if Table.operations[condicion[0]](self.tbl[idx][condicion[1]], condicion[2]):
                 del self.tbl[idx]
 
-    def _select(self, columns_name:list, select_condition:dict):
-        if select_condition == None:
-            return self.tbl.π(columns_name)
+    def _select(self, tables_names:Union[list, str], columns_name:list, select_condition:dict):
+        if type(tables_names) == list:
+            # CROSS JOIN:
+            left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
+            right_table = Table(tables_names[1].get('value')).ρ(tables_names[1].get('name'))
+
+            return (left_table*right_table).σ(select_condition).π(columns_name)
+
         else:
-            return self.tbl.π(columns_name).σ(select_condition)
+            table = Table(tables_names)
+            if select_condition == None:
+                return table.π(columns_name)
+            else:
+                return table.π(columns_name).σ(select_condition)
 
