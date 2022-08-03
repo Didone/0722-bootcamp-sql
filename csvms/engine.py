@@ -10,6 +10,8 @@ class Engine():
 
     """Class used to implement bootcamp tasks"""
 
+    commitStatus = False
+
     def execute(self, sql:str):
         if sql.lower().find('create table') >= 0:
             ast = parse(sql)
@@ -37,6 +39,19 @@ class Engine():
                     queryToParse = queryToParse + " " + sql[i]
             queryToParse = queryToParse.strip()
             return self._update_table(queryToParse)
+        elif sql.lower().find('delete from') >= 0:
+            queryToParse = ''
+            sql = sql.split("\n")
+            del sql[0]
+            for i in range(len(sql)):
+                if sql[i].find('COMMIT')<0:
+                    sql[i] = sql[i].replace(";","")
+                    sql[i] = sql[i].replace("\n","")
+                    sql[i] = sql[i].strip()
+                    print(sql[i])
+                    queryToParse = queryToParse + " " + sql[i]
+            queryToParse = queryToParse.strip()
+            return self._delete_table(queryToParse)
         else:  
             return None
 
@@ -68,8 +83,8 @@ class Engine():
         if commitStatus == True:
             tbl.save()
         return f"Os valores na tabela {tbl_name} foram inseridos com sucesso"
-        
-   def _update_table(self, queryToParse:str):
+    
+    def _update_table(self, queryToParse:str):
         ast = parse(queryToParse)
         tblName = ast['update']
         oldValue = ast['where']['eq'][1]['literal']
@@ -87,4 +102,14 @@ class Engine():
         tbl.save()
         return f"Os valores na tabela {tblName} foram atualizados com sucesso"
 
-    
+    def _delete_table(self, queryToParse:str):
+        ast = parse(queryToParse)
+        tbl_name = ast['delete']
+        deletionCol = ast['where']['eq'][0]
+        deletionRow = ast['where']['eq'][1]['literal']
+        tbl = Table(tbl_name)
+        print(tbl)
+        for idx in reversed(range(len(tbl))):
+            if tbl[idx][deletionCol] == deletionRow:
+                del tbl[idx]
+        tbl.save()
