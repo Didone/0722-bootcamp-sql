@@ -50,12 +50,13 @@ class Engine():
             ctype = Table.dtypes[list(c['type'].keys())[0]]
             cols[cname]=ctype
 
-        self.modified_tbls[tbl_name] = (
-            Table(
-                name=tbl_name,
-                columns=cols
-            )
-        )
+
+        # self.modified_tbls[tbl_name] = (
+        Table(
+            name=tbl_name,
+            columns=cols
+        ).save()
+        # )
 
     def _drop_table(self, name:str):
         print()
