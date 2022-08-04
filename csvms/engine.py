@@ -45,19 +45,16 @@ class Engine():
             )
 
         elif ast.get('update') is not None:
-            self.nome_tabela = list(ast.values())[2]
-            operation = list(ast['where'].keys())[0]
+            self.nome_tabela = ast.get('update')
+            set = ast.get('set')
+            condition=ast.get('where')
 
             if self.tbl == None:
                 self.tbl = Table(self.nome_tabela)
             
             return self._update(
-                update_value=[list(ast['set'].keys())[0], list(ast['set']['tp_fruta'].values())[0]],
-                update_condicion=[
-                    operation,                                      # operador
-                    ast['where'][operation][0],                     # nome da coluna
-                    list(ast['where'][operation][1].values())[0]    # valor
-                ]     
+                update_value=set,
+                update_condicion=condition
             )
 
         elif ast.get('delete') is not None:
@@ -132,16 +129,34 @@ class Engine():
                 
         self.tbl.append(*values)
 
-    
-    def _update(self,update_value:list, update_condicion:list):
+
+    def _update(self,update_value:dict, update_condicion:dict):
+        # Condicion where:
+        operation = list(update_condicion.keys())[0]
+        column_name_where = list(update_condicion.values())[0][0]
+        try:
+            value_condicion = list(update_condicion.values())[0][1].get('literal')
+        except AttributeError:
+            value_condicion = list(update_condicion.values())[0][1]
+
+        # lista com nomes da columnas que possuem valores para substituir
+        columns_name_subs = list(update_value.keys())
+
+        # Itera sobre a tabela para percorrer todas as sua linha
         for idx in range(len(self.tbl)):
-            if Table.operations[update_condicion[0]](self.tbl[idx][update_condicion[1]], update_condicion[2]):
+            # em busca daquelas que atendem às condições da clausula WHERE
+            if Table.operations[operation](self.tbl[idx][column_name_where], value_condicion):
                 # Armazena o conteudo da linha
                 row = self.tbl[idx]
-                # Altera o valor da linha selecionado
-                row[update_value[0]]=update_value[1]
+                # For para substituir os valores (caso exista mais do que um valor para ser substituido)
+                for name in (columns_name_subs):
+                    # Altera o valor da linha selecionado para cada coluna
+                    row[name] = list(update_value.get(name).values())[0]
+                
+
                 # Atualiza a linha, já como valor novo, na tabela
                 self.tbl[idx] = tuple(row.values())
+
 
 
     def _delete(self, condicion:list):
@@ -151,11 +166,18 @@ class Engine():
 
     def _select(self, tables_names:Union[list, str], columns_name:list, select_condition:dict):
         if type(tables_names) == list:
-            # CROSS JOIN:
-            left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
-            right_table = Table(tables_names[1].get('value')).ρ(tables_names[1].get('name'))
+            if tables_names[1].get('inner join') is not None:
+                left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
+                right_table = Table(tables_names[1].get('inner join').get('value')).ρ(tables_names[1].get('name'))
+                print(left_table)
+                print(right_table)
 
-            return (left_table*right_table).σ(select_condition).π(columns_name)
+            else:
+                # CROSS JOIN:
+                left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
+                right_table = Table(tables_names[1].get('value')).ρ(tables_names[1].get('name'))
+
+                return (left_table*right_table).σ(select_condition).π(columns_name)
 
         else:
             table = Table(tables_names)
