@@ -65,6 +65,7 @@ class Engine():
         return f"A Tabela {tbl_name} foi criada com sucesso!"
 
     def _insert_table(self, querySplit:list, commitStatus:bool):
+        # este metodo ja resolve as issues #3 e #6
         newValueList = list()
         for i in range(len(querySplit)):
             querySplit[i] = querySplit[i].strip()
