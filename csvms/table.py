@@ -88,7 +88,7 @@ class Table():
         'mul': lambda x,y: None if x is None or y is None else x*y,
         'ifnull': lambda x,y: y if x is None else x,
         'coalesce': lambda x,y: y if x is None else x,
-        'concat': lambda x,y: None if x is None or y is None else x+y,
+        'concat': lambda x,y: None if x is None or y is None else str(x)+str(y),
         'pow': lambda x,y: None if x is None or y is None else pow(x,y)
     }
     # Supported operations in reverse
@@ -699,6 +699,27 @@ class Table():
             name = f"({self.name}Π)",
             columns=cols,
             data=rows)
+
+    def ᐅᐸ(self, other:"Table", where=dict) -> "Table":
+        tbl = Table(
+            name=f"{self.name}ᐅᐸ{other.name}",
+            columns=self.columns
+        )
+        aux_tbl = (self * other).σ(where)
+        for row in aux_tbl:
+            tbl.append(*(row[:len(self.columns)]))
+        return tbl
+        
+    def ᐳᐊ(self, other:"Table", where=dict) -> "Table":
+        tbl = Table(
+            name=f"{self.name}ᐅᐸ{other.name}",
+            columns=self.columns
+        )
+        aux_tbl = (self * other).σ(where)
+        for row in aux_tbl:
+            tbl.append(*(row[len(self.columns):]))
+        return tbl
+
 
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`

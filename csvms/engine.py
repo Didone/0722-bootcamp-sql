@@ -18,10 +18,7 @@ class Engine():
             f = open(sql, 'r+')
             sql = ''
             for l in f:
-                print("antes:",l)
                 sql += l[:l.find("--")]
-                print("depois:",l)
-            print(sql)
 
         commands = list()
 
@@ -148,9 +145,4 @@ class Engine():
             return self.modified_tbls[tbl_name]
         else:
             return Table(tbl_name)
-
-    def _column_index(self, tbl:Table, val:str) -> int:
-        for num, _ in enumerate(tbl.columns.keys()):
-            if _ == val:
-                return num
 
