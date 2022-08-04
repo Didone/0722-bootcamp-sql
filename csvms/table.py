@@ -700,6 +700,84 @@ class Table():
             columns=cols,
             data=rows)
 
+    def ᗌᐊ(self, other:"Table", where=dict) -> "Table":
+        left_cols = dict()
+        left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                left_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᗌᐊ{other.name}",
+            columns=left_cols,
+            data=left_rows
+        )
+    
+    def ᐅᗏ(self, other:"Table", where=dict) -> "Table":
+        right_cols = dict()
+        right_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        right_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                right_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᐅᗏ{other.name}",
+            columns=right_cols,
+            data=right_rows
+        )
+    def ᗌᗏ(self, other:"Table", where=dict) -> "Table":
+        full_cols = dict()
+        full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        full_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        full_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                full_rows.append(s + o)
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                full_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᗌᗏ{other.name}",
+            columns=full_cols,
+            data=list(dict.fromkeys(full_rows))
+        )
+
     def ᐅᐸ(self, other:"Table", where=dict) -> "Table":
         tbl = Table(
             name=f"{self.name}ᐅᐸ{other.name}",
