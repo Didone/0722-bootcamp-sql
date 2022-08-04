@@ -798,12 +798,51 @@ class Table():
             tbl.append(*(row[len(self.columns):]))
         return tbl
 
+    def ᐅ(self, other:"Table", where=dict) -> "Table":
+        left_anti_rows = list()
 
-    #TODO: Implement FULL join operator `ᗌᗏ`
-    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
-    #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
-    #TODO: Implement LEFT ANTI join operator `ᐅ`
-    #TODO: Implement RIGHT ANTI join operator `◁`
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        o_col = list(other.columns.keys()).index(comp_col_o)
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                if o[o_col] is None:
+                    left_anti_rows.append(s)
+
+        return Table(
+            name=f"{self.name}ᐅ{other.name}",
+            columns=self.columns,
+            data=left_anti_rows
+        )
+
+    def ᐊ(self, other:"Table", where=dict) -> "Table":
+        right_anti_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        s_col = list(self.columns.keys()).index(comp_col_s)
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                if s[s_col] is None:
+                    right_anti_rows.append(o)
+
+        return Table(
+            name=f"{self.name}ᐊ{other.name}",
+            columns=other.columns,
+            data=right_anti_rows
+        )
 
 class Index():
     """Represents a table index"""
