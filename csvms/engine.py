@@ -1,6 +1,7 @@
 """CSVMS SQL Engine Module
 See https://github.com/Didone/csvms/discussions/6
 """
+from cmath import exp
 from mo_sql_parsing import parse
 from csvms.table import Table
 from re import sub
@@ -151,9 +152,11 @@ class Engine():
                 # For para substituir os valores (caso exista mais do que um valor para ser substituido)
                 for name in (columns_name_subs):
                     # Altera o valor da linha selecionado para cada coluna
-                    row[name] = list(update_value.get(name).values())[0]
+                    try:
+                        row[name] = list(update_value.get(name).values())[0]
+                    except AttributeError:
+                        row[name] = update_value.get(name)
                 
-
                 # Atualiza a linha, já como valor novo, na tabela
                 self.tbl[idx] = tuple(row.values())
 
@@ -169,9 +172,14 @@ class Engine():
             if tables_names[1].get('inner join') is not None:
                 left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
                 right_table = Table(tables_names[1].get('inner join').get('value')).ρ(tables_names[1].get('name'))
-                print(left_table)
-                print(right_table)
+                condition_join = tables_names[1].get('on')
+                
+                if select_condition == None:
+                    return (left_table.ᐅᐊ(right_table, condition_join)).π(columns_name)
+                else:
+                    return (left_table.ᐅᐊ(right_table, condition_join)).σ(select_condition).π(columns_name)
 
+                
             else:
                 # CROSS JOIN:
                 left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
