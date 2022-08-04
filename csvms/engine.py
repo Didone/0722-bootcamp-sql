@@ -30,7 +30,12 @@ class Engine():
                 if 'COMMIT' not in ast[i]:
                     insert = parse(ast[i])
                     insert = insert['query']['select']
-                    values = [v['value']['literal'] for v in insert]
+                    for v in insert:
+                        print(type(v['value']))
+                        if type(v['value']) == dict:
+                            values.append(v['value']['literal'])
+                        else:
+                            values.append(v['value'])
                     list_values.append(values)
                     values = list()
                 else:
