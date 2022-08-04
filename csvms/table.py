@@ -586,22 +586,35 @@ class Table():
         rows = [v for v in self]
         if select != '*': #In case of '*' return all columns
             if not isinstance(select, list):
-                raise NotImplementedError
-            _tc = list() # List of orderd columns and indexes
-            for col in select:
-                # Get column index
+                _tc = list() # List of orderd columns and indexes
+
                 for _i_,_c_ in enumerate(self.columns.keys()):
-                    if col['value']==_c_: #When find the column
+                    if select['value']==_c_: #When find the column
                         _a_ = _c_
-                        if col.get('name') is not None:
-                            _a_ = col['name']
+                        if select.get('name') is not None:
+                            _a_ = select['name']
                         _tc.append((_i_,_c_,_a_)) #Add to the list with the index
                         break #Exit from loop when find
-                    elif col.get('name')==_c_:
-                        _a_ = _c_ = col['name']
+                    elif select.get('name')==_c_:
+                        _a_ = _c_ = select['name']
                         _tc.append((_i_,_c_,_a_)) #Add to the list with the index
-            if len(_tc)!=len(select):
-                raise ColumnException("Cant find all columns")
+
+            else:
+                _tc = list() # List of orderd columns and indexes
+                for col in select:
+                    # Get column index
+                    for _i_,_c_ in enumerate(self.columns.keys()):
+                        if col['value']==_c_: #When find the column
+                            _a_ = _c_
+                            if col.get('name') is not None:
+                                _a_ = col['name']
+                            _tc.append((_i_,_c_,_a_)) #Add to the list with the index
+                            break #Exit from loop when find
+                        elif col.get('name')==_c_:
+                            _a_ = _c_ = col['name']
+                            _tc.append((_i_,_c_,_a_)) #Add to the list with the index
+                if len(_tc)!=len(select):
+                    raise ColumnException("Cant find all columns")
             rows = list()
             for row in self: # For each row
                 _r_ = tuple() # Create a new tuple
