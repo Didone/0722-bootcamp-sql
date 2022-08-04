@@ -10,9 +10,18 @@ class Engine():
     def __init__(self) -> None:
         self.modified_tbls = dict()    
 
-    def execute(self, sql:str):
+    def execute(self, sql:str, file=False):
         """Execute SQL statement
         :param sql: String with sql statement"""
+
+        if file:
+            f = open(sql, 'r+')
+            sql = ''
+            for l in f:
+                print("antes:",l)
+                sql += l[:l.find("--")]
+                print("depois:",l)
+            print(sql)
 
         commands = list()
 
@@ -34,7 +43,7 @@ class Engine():
                     tokens = parse(command)
                 except:
                     continue
-                
+
                 if tokens.get('create table') is not None:
                     self._create_table(
                         tbl_name=tokens['create table']['name'],
@@ -66,13 +75,14 @@ class Engine():
             ctype = Table.dtypes[list(c['type'].keys())[0]]
             cols[cname]=ctype
 
-
         # self.modified_tbls[tbl_name] = (
         Table(
             name=tbl_name,
             columns=cols
         ).save()
         # )
+
+        print('entrou')
 
     def _drop_table(self, name:str):
         print()
