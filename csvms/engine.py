@@ -45,6 +45,24 @@ class Engine():
             if 'COMMIT' in ast: # Salva no banco se tiver o comando 'COMMIT' 
                 tbl_insert.save()
 
+        elif ast.get('update') is not None:
+            where_values = dict()
+            set_values = dict()
+
+            set_v = ast['set']
+            for k in set_v.keys():
+                for v in set_v[k]:
+                    set_values[k] = set_v[k][v]
+                    
+            where_v = ast['where']['eq']
+            where_values[where_v[0]] = where_v[1]['literal']
+
+            self._update(
+                tbl_name=ast['update'],
+                where_values=where_values,
+                set_values=set_values
+            ).save()
+
         else:
             raise NotImplementedError
     
@@ -67,4 +85,17 @@ class Engine():
         for values in insert_values:
             tbl.append(*values)
 
+        return tbl
+
+    def _update(self, tbl_name:str, where_values:dict, set_values:dict):
+        '''Update tabela'''
+        tbl = Table(tbl_name)
+
+        for idx in range(len(tbl)):
+            if tbl[idx][list(where_values.keys())[0]] == list(where_values.values())[0]:
+                row = tbl[idx]
+                row[list(set_values.keys())[0]] = list(set_values.values())[0]
+                tbl[idx] = tuple(row.values())
+
+        print(tbl)
         return tbl
