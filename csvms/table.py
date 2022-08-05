@@ -703,6 +703,22 @@ class Table():
             data=rows)
 
     #TODO: Implement FULL join operator `ᗌᗏ`
+    def ᗌᐊ(self, other:'Table', where:Dict[str,list]) -> 'Table':
+        left_cols = dict()
+        left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+        for row_left in self:
+            for row_right in other.σ({list(where.keys())[0]:[list(where.values())[0][1].split('.')[1],row_left[list(left_cols.keys()).index(list(where.values())[0][0])]]}, null=True):
+                left_rows.append(row_left + row_right)
+        print(
+            Table(
+                name="({tabela.name}ᗌᐊ{other.name})",
+                columns=left_cols,
+                data=left_rows
+            )
+        )
+
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
     #TODO: Implement LEFT ANTI join operator `ᐅ`
