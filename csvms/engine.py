@@ -3,6 +3,8 @@ See https://github.com/Didone/csvms/discussions/6
 """
 
 from optparse import Values
+
+from tomlkit import table
 from csvms.table import Table
 from mo_sql_parsing import parse
 
@@ -31,7 +33,6 @@ class Engine():
                     insert = parse(ast[i])
                     insert = insert['query']['select']
                     for v in insert:
-                        print(type(v['value']))
                         if type(v['value']) == dict:
                             values.append(v['value']['literal'])
                         else:
@@ -62,7 +63,7 @@ class Engine():
             where_v = ast['where']['eq']
             where_values[where_v[0]] = where_v[1]['literal']
 
-            self._update(
+            return self._update(
                 tbl_name=ast['update'],
                 where_values=where_values,
                 set_values=set_values
@@ -74,12 +75,16 @@ class Engine():
             where_v = ast['where']['eq']
             where_values[where_v[0]] = where_v[1]['literal']
 
-            print('where values', where_values)
-
-            self._delete(
+            return self._delete(
                 tbl_name=ast['delete'],
                 where_values=where_values,
             ).save()
+
+        elif ast.get('select') is not None:
+            if ast.get('select') == '*':
+                return self._select_table(
+                    tbl_name=ast['from'],
+                )
 
         else:
             raise NotImplementedError
@@ -125,6 +130,13 @@ class Engine():
         for idx in reversed(range(len(tbl))):
             if tbl[idx][list(where_values.keys())[0]] == list(where_values.values())[0]:
                 del tbl[idx]
+
+        print(tbl)
+        return tbl
+
+    def _select_table(self, tbl_name:str):
+        '''Selecão da tabela'''
+        tbl = Table(tbl_name)
 
         print(tbl)
         return tbl
