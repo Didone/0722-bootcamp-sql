@@ -91,6 +91,7 @@ class Table():
         #TODO: Concatenate two string
         'concat': lambda x,y: None if x is None or y is None else str(x) + str(y),
         #TODO: Raises expr1 to the power of expr2.
+        'pow': lambda x,y: x**y
     }
     # Supported operations in reverse
     _strtypes_ = {value:key for key, value in dtypes.items()}
