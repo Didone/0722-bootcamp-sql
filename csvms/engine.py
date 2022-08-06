@@ -11,6 +11,7 @@ class Engine():
     """Class used to implement bootcamp tasks"""
 
     def __init__(self) -> None:
+        self._transaction = dict()
         self.nome_tabela = None
         self.tbl = None
         
@@ -72,7 +73,7 @@ class Engine():
                     list(ast['where'][operation][1].values())[0]    # valor
                 ] 
             )
-        
+
         elif ast.get('select') is not None:
             tables = ast.get('from')
             columns = ast.get('select')
@@ -83,6 +84,9 @@ class Engine():
                 columns_name=columns,
                 select_condition = condition
             )
+
+
+        
 
 
     def _multiple_statements(self, sql:str):
@@ -167,27 +171,43 @@ class Engine():
             if Table.operations[condicion[0]](self.tbl[idx][condicion[1]], condicion[2]):
                 del self.tbl[idx]
 
-    def _select(self, tables_names:Union[list, str], columns_name:list, select_condition:dict):
-        if type(tables_names) == list:
+    '''def _select(self, tables_names:Union[list, str], columns_name:list, select_condition:dict):
+        # Percorre todas as informações de colunas 
+        for c in columns_name:
+            # Verifica a existência de projeção estendida
+            if not isinstance(c.get('value'), str):
+                # Armazena as informações da projeção estendida
+                extend_dict = c.get('value')
+                extend_name = c.get('name')
+
+        # Verifica se é uma junção
+        if isinstance(tables_names, list):
             left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
             condition_join = tables_names[1].get('on')
 
+            # Inner join
             if tables_names[1].get('inner join') is not None:
                 right_table = Table(tables_names[1].get('inner join').get('value')).ρ(tables_names[1].get('inner join').get('name'))
                 if select_condition == None:
                     return (left_table.ᐅᐊ(right_table, condition_join)).π(columns_name)
                 else:
                     return (left_table.ᐅᐊ(right_table, condition_join)).σ(select_condition).π(columns_name)
-
+            # Left join
+            elif tables_names[1].get('left join') is not None:
+                right_table = Table(tables_names[1].get('left join').get('value')).ρ(tables_names[1].get('left join').get('name'))
+                if select_condition == None:
+                    return (left_table.ᗌᐊ(right_table, condition_join)).π(columns_name)
+                else:
+                    return (left_table.ᗌᐊ(right_table, condition_join)).σ(select_condition).π(columns_name)
+            # Right join
             elif tables_names[1].get('right join') is not None:
                 right_table = Table(tables_names[1].get('right join').get('value')).ρ(tables_names[1].get('right join').get('name'))
                 if select_condition == None:
                     return (left_table.ᐅᗏ(right_table, condition_join)).π(columns_name)
                 else:
                     return (left_table.ᐅᗏ(right_table, condition_join)).σ(select_condition).π(columns_name)
-
+            # CROSS JOIN:
             else:
-                # CROSS JOIN:
                 left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
                 right_table = Table(tables_names[1].get('value')).ρ(tables_names[1].get('name'))
 
@@ -198,5 +218,91 @@ class Engine():
             if select_condition == None:
                 return table.π(columns_name)
             else:
-                return table.π(columns_name).σ(select_condition)
+                return table.σ(select_condition).π(columns_name)'''
 
+
+    def _from(self, tables_names:Union[list, str], other:"Table"=None) -> "Table":
+        if isinstance(tables_names, list):
+            for table_info in tables_names:
+                table = self._from(table_info, other)
+                other = table
+
+        else:
+            if isinstance(tables_names, dict):
+                if tables_names.get('value') is not None:
+                    table_name = tables_names.get('name')
+                    table = Table(tables_names.get('value'))
+
+                else:
+                    join_operation = ['inner join', 'left join', 'right join']
+                    for join in join_operation:
+                        if tables_names.get(join_operation) is not None:
+                             Table(tables_names.get(join).get('value'))
+                
+            else:
+                table = Table(tables_names)
+
+        return table
+    
+
+    def _join(self, join_operation: str, left_table:"Table", right_table:"Table", condition_join:dict) -> "Table":
+        if join_operation == 'inner join':
+            table = left_table.ᐅᐊ(right_table, condition_join)
+        
+        elif join_operation == 'left join':
+            table = left_table.ᗌᐊ(right_table, condition_join)
+
+        elif join_operation == 'right join':
+            table = left_table.ᐅᗏ(right_table, condition_join)
+        else:
+            table = (left_table*right_table)
+
+        return table
+
+    def _extended_projection(self, columns_name:Union[list, str]):
+        extended_projection = alias_extended_projection = None
+        # verifica se as columnas são uma list
+        if isinstance(columns_name, list):
+            # Percorre todas as colunas da projeção
+            for column in columns_name:
+                # Verifica se é projeção estendida 
+                if isinstance(column.get('value'), dict):
+                    extended_projection = column.get('value')
+                    alias_extended_projection = column.get('name')
+
+        return extended_projection, alias_extended_projection
+
+    def _select(self, tables_names:Union[list, str], columns_name:Union[list, str], select_condition:dict):
+        # Verifica se há projeção estendida 
+        extended_projection, alias_extended_projection = self._extended_projection(columns_name)
+
+        # Verifica se há join
+        if isinstance(tables_names, list):
+            # Armazena a Tabela esquerda
+            left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
+            # Aramazena a condição do join
+            condition_join = tables_names[1].get('on')
+
+            joins_operation = ['value', 'inner join', 'left join', 'right join']
+            # Verifica qual tipo de join será realizado
+            for join_type in joins_operation:
+                if tables_names[1].get(join_type) is not None:
+                    # Para caso de junção cruzada
+                    if join_type == 'value':
+                        right_table = Table(tables_names[1].get(join_type)).ρ(tables_names[1].get('name'))
+                    # Para caso de joins
+                    else:
+                        right_table = Table(tables_names[1].get(join_type).get('value')).ρ(tables_names[1].get(join_type).get('name'))
+                    
+                    # Realiza a operação de junção e seleção
+                    table = self._join(join_type, left_table, right_table, condition_join)\
+                                                                            .σ(select_condition)\
+                                                                                .Π(extended_projection, alias_extended_projection)\
+                                                                                    .π(columns_name)
+
+        # Caso for um SELECT sem join
+        else:
+            # Realiza a seleção
+            table = Table(tables_names).σ(select_condition).Π(extended_projection, alias_extended_projection).π(columns_name)
+
+        return table

@@ -624,7 +624,7 @@ class Table():
             cols = {a:self.columns[k] for _,k,a in _tc}
         return Table(name=f"({self.name}π)",columns=cols,data=rows)
 
-    def σ(self, condition:Dict[str,list], null=False) -> "Table":
+    def σ(self, condition:Dict[str,list]=None, null=False) -> "Table":
         """Selection Operator (σ)
         :param condition: A expression composed by the logic operation and list of values.
                           See 'operations' dictionary to get the list of valid options
@@ -656,16 +656,19 @@ class Table():
         | exists  | is not None |
 
         """
-        rows = list()
-        for idx, row in enumerate(self):
-            if self.logical_evaluation(self[idx], condition):
-                rows.append(row)
-        if null and len(rows)==0:
-            rows.append(self.empty_row)
-        return Table(
-            name = f"({self.name}σ)",
-            columns={k:v for k,v in self.columns.items()},
-            data=rows)
+        if condition is not None:
+            rows = list()
+            for idx, row in enumerate(self):
+                if self.logical_evaluation(self[idx], condition):
+                    rows.append(row)
+            if null and len(rows)==0:
+                rows.append(self.empty_row)
+            return Table(
+                name = f"({self.name}σ)",
+                columns={k:v for k,v in self.columns.items()},
+                data=rows)
+        else:
+            return self
 
     def ᐅᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
         """Join Operator (⋈)"""
@@ -675,43 +678,49 @@ class Table():
         tbl.name = f"({self.name}⋈{other.name})"
         return tbl
 
-    def ρ(self, alias:str) -> "Table":
+    def ρ(self, alias:str=None) -> "Table":
         """Rename Operator (ρ)"""
-        # Function to rename column names for the new table name
-        rename = lambda x: x if x.count('.')==0 else x.split('.')[-1]
-        return Table(
-            # Set new table name
-            name = f"{alias}",
-            # Copy all columns from source table
-            columns={rename(k):v for k,v in self.columns.items()},
-            # Copy all rows from source table
-            data=[r for r in self])
+        if alias is not None:
+            # Function to rename column names for the new table name
+            rename = lambda x: x if x.count('.')==0 else x.split('.')[-1]
+            return Table(
+                # Set new table name
+                name = f"{alias}",
+                # Copy all columns from source table
+                columns={rename(k):v for k,v in self.columns.items()},
+                # Copy all rows from source table
+                data=[r for r in self])
+        else:
+            return self
 
-    def Π(self, extend:dict, alias:str=None) -> "Table":
+    def Π(self, extend:dict=None, alias:str=None) -> "Table":
         """Extended projection Operator (Π)"""
-        rows = list() # New list of rows
-        dtype = None # Use to store the data type of the new extended column
-        for idx, row in enumerate(self): # For each row
-            val = self.extend(self[idx],extend) # Evaluated expression
-            if dtype is None: # If is the first evaluation
-                dtype = type(val) # Use the result data type
-            # if you find any different type in the next rows
-            elif dtype != type(val) and val is not None:
-                # Raise an Data exeption to abort the operation
-                raise DataException(f"{type(val)} error")
-            # If Successful add new value to the row tuple
-            rows.append(row + (val,))
-        # Copy the columns from source table
-        cols = {k:v for k,v in self.columns.items()}
-        # Add new extended column
-        if alias is None: # Remova some characters and use the expression as column name
-            cols[f"{str(extend).replace(' ','').replace('.',',')}"]=dtype
-        else: # Use alias for the new extended column
-            cols[alias]=dtype
-        return Table(
-            name = f"({self.name}Π)",
-            columns=cols,
-            data=rows)
+        if extend is not None:
+            rows = list() # New list of rows
+            dtype = None # Use to store the data type of the new extended column
+            for idx, row in enumerate(self): # For each row
+                val = self.extend(self[idx],extend) # Evaluated expression
+                if dtype is None: # If is the first evaluation
+                    dtype = type(val) # Use the result data type
+                # if you find any different type in the next rows
+                elif dtype != type(val) and val is not None:
+                    # Raise an Data exeption to abort the operation
+                    raise DataException(f"{type(val)} error")
+                # If Successful add new value to the row tuple
+                rows.append(row + (val,))
+            # Copy the columns from source table
+            cols = {k:v for k,v in self.columns.items()}
+            # Add new extended column
+            if alias is None: # Remova some characters and use the expression as column name
+                cols[f"{str(extend).replace(' ','').replace('.',',')}"]=dtype
+            else: # Use alias for the new extended column
+                cols[alias]=dtype
+            return Table(
+                name = f"({self.name}Π)",
+                columns=cols,
+                data=rows)
+        else:
+            return self
 
     def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":      
         left_cols = dict()
