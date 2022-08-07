@@ -245,19 +245,39 @@ class Engine():
         return table
     
 
-    def _join(self, join_operation: str, left_table:"Table", right_table:"Table", condition_join:dict) -> "Table":
-        if join_operation == 'inner join':
-            table = left_table.ᐅᐊ(right_table, condition_join)
-        
-        elif join_operation == 'left join':
-            table = left_table.ᗌᐊ(right_table, condition_join)
+    def _join(self, tables_names:list) -> "Table":
+        # Armazena a primeira tabela Tabela 
+        table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
 
-        elif join_operation == 'right join':
-            table = left_table.ᐅᗏ(right_table, condition_join)
-        else:
-            table = (left_table*right_table)
+        joins_operation = ['value', 'inner join', 'left join', 'right join']
+
+        for i in range(1, len(tables_names)):
+            # Aramazena a condição do join
+            condition_join = tables_names[i].get('on')
+
+            # Verifica qual tipo de join será realizado
+            for join_type in joins_operation:
+                if tables_names[i].get(join_type) is not None:
+                    # Para caso de junção cruzada
+                    if join_type == 'value':
+                        right_table = Table(tables_names[i].get(join_type)).ρ(tables_names[i].get('name'))
+
+                        table = (table*right_table)
+                    # Para caso de joins
+                    else:
+                        right_table = Table(tables_names[i].get(join_type).get('value')).ρ(tables_names[i].get(join_type).get('name'))
+
+                        if join_type == 'inner join':
+                            table = table.ᐅᐊ(right_table, condition_join)
+                        
+                        elif join_type == 'left join':
+                            table = table.ᗌᐊ(right_table, condition_join)
+
+                        elif join_type == 'right join':
+                            table = table.ᐅᗏ(right_table, condition_join)
 
         return table
+
 
     def _extended_projection(self, columns_name:Union[list, str]):
         extended_projection = alias_extended_projection = None
@@ -272,37 +292,25 @@ class Engine():
 
         return extended_projection, alias_extended_projection
 
+
     def _select(self, tables_names:Union[list, str], columns_name:Union[list, str], select_condition:dict):
         # Verifica se há projeção estendida 
         extended_projection, alias_extended_projection = self._extended_projection(columns_name)
 
         # Verifica se há join
         if isinstance(tables_names, list):
-            # Armazena a Tabela esquerda
-            left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
-            # Aramazena a condição do join
-            condition_join = tables_names[1].get('on')
-
-            joins_operation = ['value', 'inner join', 'left join', 'right join']
-            # Verifica qual tipo de join será realizado
-            for join_type in joins_operation:
-                if tables_names[1].get(join_type) is not None:
-                    # Para caso de junção cruzada
-                    if join_type == 'value':
-                        right_table = Table(tables_names[1].get(join_type)).ρ(tables_names[1].get('name'))
-                    # Para caso de joins
-                    else:
-                        right_table = Table(tables_names[1].get(join_type).get('value')).ρ(tables_names[1].get(join_type).get('name'))
-                    
-                    # Realiza a operação de junção e seleção
-                    table = self._join(join_type, left_table, right_table, condition_join)\
-                                                                            .σ(select_condition)\
-                                                                                .Π(extended_projection, alias_extended_projection)\
-                                                                                    .π(columns_name)
+            # Realiza a operação de junção e seleção
+            table = self._join(tables_names)\
+                                        .σ(select_condition)\
+                                            .Π(extended_projection, alias_extended_projection)\
+                                                .π(columns_name)
 
         # Caso for um SELECT sem join
         else:
             # Realiza a seleção
-            table = Table(tables_names).σ(select_condition).Π(extended_projection, alias_extended_projection).π(columns_name)
+            table = Table(tables_names)\
+                                .σ(select_condition)\
+                                    .Π(extended_projection, alias_extended_projection)\
+                                        .π(columns_name)
 
         return table
