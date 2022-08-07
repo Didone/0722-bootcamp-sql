@@ -84,9 +84,20 @@ class Engine():
                 columns_name=columns,
                 select_condition = condition
             )
-
-
         
+        elif ast.get('select_distinct') is not None:
+            tables = ast.get('from')
+            columns = ast.get('select_distinct')
+            condition = ast.get('where')
+
+            table = self._select(
+                tables_names=tables,
+                columns_name=columns,
+                select_condition = condition
+            )
+
+            return self._distinct(table, ast.get('select_distinct').get('name'))
+            
 
 
     def _multiple_statements(self, sql:str):
@@ -171,78 +182,19 @@ class Engine():
             if Table.operations[condicion[0]](self.tbl[idx][condicion[1]], condicion[2]):
                 del self.tbl[idx]
 
-    '''def _select(self, tables_names:Union[list, str], columns_name:list, select_condition:dict):
-        # Percorre todas as informações de colunas 
-        for c in columns_name:
-            # Verifica a existência de projeção estendida
-            if not isinstance(c.get('value'), str):
-                # Armazena as informações da projeção estendida
-                extend_dict = c.get('value')
-                extend_name = c.get('name')
 
-        # Verifica se é uma junção
-        if isinstance(tables_names, list):
-            left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
-            condition_join = tables_names[1].get('on')
+    def _distinct(self, table:"Table", distinct_column:str):
+        distinct_values = list()
+        rows = list()
+        for idx, row in enumerate(table):
+            if row[0] not in distinct_values:
+                distinct_values.append(row[0])
+                rows.append(row)
 
-            # Inner join
-            if tables_names[1].get('inner join') is not None:
-                right_table = Table(tables_names[1].get('inner join').get('value')).ρ(tables_names[1].get('inner join').get('name'))
-                if select_condition == None:
-                    return (left_table.ᐅᐊ(right_table, condition_join)).π(columns_name)
-                else:
-                    return (left_table.ᐅᐊ(right_table, condition_join)).σ(select_condition).π(columns_name)
-            # Left join
-            elif tables_names[1].get('left join') is not None:
-                right_table = Table(tables_names[1].get('left join').get('value')).ρ(tables_names[1].get('left join').get('name'))
-                if select_condition == None:
-                    return (left_table.ᗌᐊ(right_table, condition_join)).π(columns_name)
-                else:
-                    return (left_table.ᗌᐊ(right_table, condition_join)).σ(select_condition).π(columns_name)
-            # Right join
-            elif tables_names[1].get('right join') is not None:
-                right_table = Table(tables_names[1].get('right join').get('value')).ρ(tables_names[1].get('right join').get('name'))
-                if select_condition == None:
-                    return (left_table.ᐅᗏ(right_table, condition_join)).π(columns_name)
-                else:
-                    return (left_table.ᐅᗏ(right_table, condition_join)).σ(select_condition).π(columns_name)
-            # CROSS JOIN:
-            else:
-                left_table = Table(tables_names[0].get('value')).ρ(tables_names[0].get('name'))
-                right_table = Table(tables_names[1].get('value')).ρ(tables_names[1].get('name'))
-
-                return (left_table*right_table).σ(select_condition).π(columns_name)
-
-        else:
-            table = Table(tables_names)
-            if select_condition == None:
-                return table.π(columns_name)
-            else:
-                return table.σ(select_condition).π(columns_name)'''
-
-
-    def _from(self, tables_names:Union[list, str], other:"Table"=None) -> "Table":
-        if isinstance(tables_names, list):
-            for table_info in tables_names:
-                table = self._from(table_info, other)
-                other = table
-
-        else:
-            if isinstance(tables_names, dict):
-                if tables_names.get('value') is not None:
-                    table_name = tables_names.get('name')
-                    table = Table(tables_names.get('value'))
-
-                else:
-                    join_operation = ['inner join', 'left join', 'right join']
-                    for join in join_operation:
-                        if tables_names.get(join_operation) is not None:
-                             Table(tables_names.get(join).get('value'))
-                
-            else:
-                table = Table(tables_names)
-
-        return table
+        return Table(
+            name = f"({table.name}.distinct)",
+            columns={k:v for k,v in table.columns.items()},
+            data=rows)
     
 
     def _join(self, tables_names:list) -> "Table":
@@ -265,7 +217,16 @@ class Engine():
                         table = (table*right_table)
                     # Para caso de joins
                     else:
-                        right_table = Table(tables_names[i].get(join_type).get('value')).ρ(tables_names[i].get(join_type).get('name'))
+                        # Verifica a existência de subquerys
+                        if isinstance(tables_names[i].get(join_type).get('value'), dict):
+                            sub_query = tables_names[i].get(join_type).get('value')
+                            right_table = self._select(
+                                tables_names = sub_query.get('from'),
+                                columns_name = sub_query.get('select'),
+                                select_condition = sub_query.get('where')
+                                ).ρ(tables_names[i].get(join_type).get('name'))
+                        else:
+                            right_table = Table(tables_names[i].get(join_type).get('value')).ρ(tables_names[i].get(join_type).get('name'))
 
                         if join_type == 'inner join':
                             table = table.ᐅᐊ(right_table, condition_join)
