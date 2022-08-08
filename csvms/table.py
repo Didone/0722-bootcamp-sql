@@ -701,6 +701,7 @@ class Table():
             data=rows)
 
     def ᗌᐊ(self, other:"Table", where=dict) -> "Table":
+        """Left Outer Join Operator (⟕)"""
         left_cols = dict()
         left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
         left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
@@ -725,6 +726,7 @@ class Table():
         )
     
     def ᐅᗏ(self, other:"Table", where=dict) -> "Table":
+        """Right Outer Join Operator (⟖)"""
         right_cols = dict()
         right_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
         right_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
@@ -747,7 +749,9 @@ class Table():
             columns=right_cols,
             data=right_rows
         )
+
     def ᗌᗏ(self, other:"Table", where=dict) -> "Table":
+        """Full Outer Join Operator (⟗)"""
         full_cols = dict()
         full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
         full_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
@@ -779,6 +783,7 @@ class Table():
         )
 
     def ᐅᐸ(self, other:"Table", where=dict) -> "Table":
+        """Left Semi Join Operator (⋉)"""
         tbl = Table(
             name=f"{self.name}ᐅᐸ{other.name}",
             columns=self.columns
@@ -789,6 +794,7 @@ class Table():
         return tbl
         
     def ᐳᐊ(self, other:"Table", where=dict) -> "Table":
+        """Right Semi Operator (⋊)"""
         tbl = Table(
             name=f"{self.name}ᐅᐸ{other.name}",
             columns=self.columns
@@ -799,6 +805,7 @@ class Table():
         return tbl
 
     def ᐅ(self, other:"Table", where=dict) -> "Table":
+        """Left Anti Join Operator (▷)"""
         left_anti_rows = list()
 
         where=list(where.items())[0]
@@ -822,6 +829,7 @@ class Table():
         )
 
     def ᐊ(self, other:"Table", where=dict) -> "Table":
+        """Right Anti Join Operator (◁)"""
         right_anti_rows = list()
 
         where=list(where.items())[0]

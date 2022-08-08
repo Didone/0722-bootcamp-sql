@@ -1,6 +1,7 @@
 """CSVMS SQL Engine Module
 See https://github.com/Didone/csvms/discussions/6
 """
+from select import select
 from mo_sql_parsing import parse
 from csvms.table import Table
 
@@ -27,7 +28,6 @@ class Engine():
                 commands = sql.split(';')[:-1]
             else:
                 commands = sql.split(';')
-
         else:
             commands.append(sql)
         
@@ -62,6 +62,10 @@ class Engine():
                         tbl_name=tokens['delete'], 
                         where=tokens['where']
                     )
+                elif tokens.get('select') is not None:
+                    print(self._select(tokens))
+                elif tokens.get('select_distinct') is not None:
+                    print(self._select(tokens, distinct=True))
                 else:
                     raise NotImplementedError
 
@@ -72,18 +76,12 @@ class Engine():
             ctype = Table.dtypes[list(c['type'].keys())[0]]
             cols[cname]=ctype
 
-        # self.modified_tbls[tbl_name] = (
+        self._save_tables()
         Table(
             name=tbl_name,
             columns=cols
         ).save()
-        # )
 
-        print('entrou')
-
-    def _drop_table(self, name:str):
-        print()
-    
     def _insert(self, tbl_name:str, values:list):
         new_row = list()
         tbl = self._load_table(tbl_name)
@@ -97,6 +95,9 @@ class Engine():
         self.modified_tbls[tbl_name] = tbl
 
     def _update_or_delete(self, tbl_name:str, set:dict or None = None, where=dict):
+        """Atualiza ou Deleta linhas da tabela baseado em condições passadas como parâmetro\n
+           Caso 'set' não receba parâmetros a função agira como DELETE\n
+           Caso contrário agira como UPDATE"""
         tbl = self._load_table(tbl_name)
 
         op_str = list(where.keys())[0]
@@ -134,7 +135,115 @@ class Engine():
                     del tbl[row]
         self.modified_tbls[tbl_name] = tbl
 
+    def _select(self, sql:dict, distinct:bool=False):
+
+        def _change_name(table:dict) -> Table:
+            if isinstance(table.get('value'), dict):
+                tbl = self._select(table.get('value'))
+                if table.get('name') is not None:
+                    tbl = tbl.ρ(table['name'])
+                    return tbl
+                else:
+                    return tbl
+
+            if table.get('name') is not None:
+                tbl = Table(table['value'])
+                tbl = tbl.ρ(table['name'])
+                return tbl
+            else:
+                return Table(table['value'])
+        
+        f = sql['from']
+        result = None
+
+        # FROM E JOIN
+        if isinstance(f, list):
+            result = _change_name(f[0])
+            for element in f[1:]:
+                if element.get('value') is not None:
+                    result = result * _change_name(element)
+                if element.get('inner join') is not None:
+                    result = self._inner_join(result, _change_name(element['inner join']), element['on'])
+                if element.get('right join') is not None or element.get('right outer join') is not None:
+                    result = self._right_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
+                if element.get('left join') is not None or element.get('left outer join') is not None:
+                    result = self._left_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
+                if element.get('full join') is not None:
+                    result = self._full_join(element['full join'], element['on'])
+                if element.get('select') is not None:
+                    result = result * self._select(element['select'], distinct=False)
+                if element.get('select_distinct') is not None:
+                    result = result * self._select(element['select'], distinct=False)
+
+        elif isinstance(f, dict):
+            result = Table(f['value'])
+            result.name = f['name']
+        else:
+            result = Table(f)
+
+        # WHERE E CONDIÇÕES
+        if sql.get('where') is not None:
+            print(result)
+            result = result.σ(sql['where'])
+
+        # PROJEÇÕES
+        if distinct:
+            projection = sql['select_distinct']
+        else:
+            projection = sql['select']
+
+        if isinstance(projection, list):
+            for col in projection:
+                if isinstance(col.get('value'), dict):
+                    result = result.Π(col['value'], col['name'])
+            result = result.π(projection)
+            if distinct:
+                return Table(
+                    name=result.name,
+                    columns=result.columns,
+                    data=list(dict.fromkeys(result._rows))
+                    )
+            else:
+                return result
+        elif isinstance(projection, dict):
+            if isinstance(projection.get('value'), dict):
+                result = result.Π(col['value'], col['name'])
+            cols = list()
+            cols.append(projection)
+            result = result.π(cols)
+            if distinct:
+                return Table(
+                    name=result.name,
+                    columns=result.columns,
+                    data=list(dict.fromkeys(result._rows))
+                    )
+            else:
+                return result
+        else:
+            if distinct:
+                return Table(
+                    name=result.name,
+                    columns=result.columns,
+                    data=list(dict.fromkeys(result._rows))
+                    )
+            else:
+                return result
+    
+    def _inner_join(self, table_a:Table, table_b:Table, on:dict) -> Table:
+        return table_a.ᐅᐊ(table_b, on)
+    
+    def _right_join(self, table_a:Table, table_b:Table, on:dict) -> Table:
+        return table_a.ᐅᗏ(table_b, on)
+    
+    def _left_join(self, table_a:Table, table_b:Table, on:dict) -> Table:
+        return table_a.ᗌᐊ(table_b, on)
+    
+    def _full_join(self, table_a:Table, table_b:Table, on:dict) -> Table:
+        return table_a.ᗌᗏ(table_b, on)
+
     def _save_tables(self):
+        """Salva as mudanças feitas nas tabelas
+           que estão armazenadas na variável modified_tbls"""
         for tbl in self.modified_tbls.values():
             tbl.save()
             print('Tabela', tbl.name, 'foi salva no SCHEMA', tbl.database.name)
