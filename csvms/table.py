@@ -862,7 +862,26 @@ class Table():
 
     # Implement RIGHT ANTI join operator `◁`
     def ᐊ(self, other:"Table", where:Dict[str,list]) -> "Table": 
-        pass
+        rigth_semi_cols = dict()
+        rigth_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        rigth_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_semi_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+        pos_column_semi = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                if row_left_table[pos_column_semi] is None:
+                    right_semi_rows.append(row_right_table)
+
+        return Table(
+            name=f"({self.name}ᐊ{other.name})",
+            columns=other.columns,
+            data=right_semi_rows)
 
 
 
