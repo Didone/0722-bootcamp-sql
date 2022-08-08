@@ -765,6 +765,7 @@ class Table():
             data=right_rows)           
 
 
+    # Implement FULL join operator `ᗌᗏ`
     def ᗌᗏ(self, other:"Table", where:Dict[str,list]) -> "Table":      
         full_cols = dict()
         full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
@@ -793,6 +794,7 @@ class Table():
             columns=full_cols,
             data=list(dict.fromkeys(full_rows)))  
 
+    # Implement RIGHT SEMI join operator `ᐳᐊ`
     def ᐳᐊ(self, other:"Table", where:Dict[str,list]) -> "Table": 
         right_semi_cols = dict()
         # right_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
@@ -813,7 +815,7 @@ class Table():
             columns=right_semi_cols,
             data=right_semi_rows)
 
-
+    # Implement LEFT SEMI join operator `ᐅᐸ`
     def ᐅᐸ(self, other:"Table", where:Dict[str,list]) -> "Table": 
         left_semi_cols = dict()
         left_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
@@ -858,12 +860,13 @@ class Table():
             columns=self.columns,
             data=left_semi_rows)
 
+    # Implement RIGHT ANTI join operator `◁`
+    def ᐊ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        pass
 
-    #TODO: Implement FULL join operator `ᗌᗏ`
-    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
-    #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
-    
-    #TODO: Implement RIGHT ANTI join operator `◁`
+
+
+
 
 class Index():
     """Represents a table index"""
