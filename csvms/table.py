@@ -834,10 +834,35 @@ class Table():
             columns=left_semi_cols,
             data=left_semi_rows)
 
+    #Implement LEFT ANTI join operator `ᐅ`
+    def ᐅ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        left_semi_cols = dict()
+        left_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_semi_rows = list()
+    
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+        pos_column_semi = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                if row_right_table[pos_column_semi] is None:
+                    left_semi_rows.append(row_left_table)
+
+        
+        return Table(
+            name=f"({self.name}ᐅ{other.name})",
+            columns=self.columns,
+            data=left_semi_rows)
+
+
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
-    #TODO: Implement LEFT ANTI join operator `ᐅ`
+    
     #TODO: Implement RIGHT ANTI join operator `◁`
 
 class Index():
