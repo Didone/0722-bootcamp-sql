@@ -137,28 +137,29 @@ class Engine():
 
     def _select(self, sql:dict, distinct:bool=False):
 
-        def _change_name(table:dict) -> Table:
-            if isinstance(table.get('value'), dict):
-                tbl = self._select(table.get('value'))
+        def _change_name(table) -> Table:
+            if isinstance(table, dict):
+                if isinstance(table.get('value'), dict):
+                    tbl = self._select(table.get('value'))
+                    if table.get('name') is not None:
+                        tbl = tbl.ρ(table['name'])
+                        return tbl
+                    else:
+                        return tbl
+
                 if table.get('name') is not None:
+                    tbl = Table(table['value'])
                     tbl = tbl.ρ(table['name'])
                     return tbl
-                else:
-                    return tbl
-
-            if table.get('name') is not None:
-                tbl = Table(table['value'])
-                tbl = tbl.ρ(table['name'])
-                return tbl
             else:
-                return Table(table['value'])
+                return Table(table)
         
         f = sql['from']
         result = None
 
         # FROM E JOIN
         if isinstance(f, list):
-            result = _change_name(f[0])
+            result = _change_name(f[0]) if isinstance(f[0], dict) else Table(f[0])
             for element in f[1:]:
                 if element.get('value') is not None:
                     result = result * _change_name(element)
@@ -169,12 +170,12 @@ class Engine():
                 if element.get('left join') is not None or element.get('left outer join') is not None:
                     result = self._left_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
                 if element.get('full join') is not None:
-                    result = self._full_join(element['full join'], element['on'])
+                    result = self._full_join(result, _change_name(element['full join']), element['on'])
                 if element.get('select') is not None:
-                    result = result * self._select(element['select'], distinct=False)
+                    result = result * self._select(element, distinct=False)
                 if element.get('select_distinct') is not None:
-                    result = result * self._select(element['select'], distinct=False)
-
+                    result = result * self._select(element, distinct=True)
+                    
         elif isinstance(f, dict):
             result = Table(f['value'])
             result.name = f['name']
@@ -183,7 +184,6 @@ class Engine():
 
         # WHERE E CONDIÇÕES
         if sql.get('where') is not None:
-            print(result)
             result = result.σ(sql['where'])
 
         # PROJEÇÕES

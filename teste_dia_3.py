@@ -34,5 +34,4 @@ SELECT v.nm_fruta
   INNER JOIN tipo_frutas p ON l.tp_fruta = p.tp_fruta) c ON f.nm_fruta = c.nm_fruta
   WHERE c.total < 20 
      OR c.total IS NULL"""
-print("\n\n",parse(sql),"\n\n")
 eng.execute(sql)
