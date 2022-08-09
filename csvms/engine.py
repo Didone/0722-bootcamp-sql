@@ -2,9 +2,10 @@
 See https://github.com/Didone/csvms/discussions/6
 """
 from cmath import exp
+from multiprocessing.sharedctypes import Value
 from mo_sql_parsing import parse
 from csvms.table import Table
-from re import sub
+from re import sub, match, compile
 from typing import Union
 
 class Engine():
@@ -15,6 +16,31 @@ class Engine():
         self.nome_tabela = None
         self.tbl = None
         
+    def __getitem__(self, key:dict) -> Table:
+        """Get table from memory"""
+        # Se a key for uma str cria um dict sendo o nome e valor a str recebida
+        if isinstance(key, str):
+            key = dict(name=key, value=key)
+        try:
+            # {'value': 'tipo_frutas', 'name': 't'}
+            # Verifica se existe uma instancia da tabela em mémoria
+            return self._transaction[key['name']]
+        # Caso não seja encontrada a instância da tabela em mémoria
+        except KeyError:
+            # Se não existir alias
+            if key['name'] == key['value']:
+                self._transaction[key['name']] = Table(key['value'])
+            else:
+                # Para caso de subquery
+                if isinstance(key['value'], dict):
+                    # return self._select(key['value']).ρ(key['name'])
+                    pass
+                # Caso possua um alias
+                else:
+                    return Table(key['value']).ρ(key['name'])
+
+            return self.__getitem__(key)
+
 
     def execute(self, sql:str):
         """Execute SQL statement
@@ -22,8 +48,11 @@ class Engine():
         # TODO Implement your SQL engine
 
         # Verifica a existencia de multiplas statements
+        if ('LOAD' or '.sql') in sql:
+            sql = self._load_file(sql)
+
         if ';' in sql:
-            return self._multiple_statements(sql)
+            return self._multiple_statements_file(sql)
         else:
             ast = parse(sql)
 
@@ -36,37 +65,30 @@ class Engine():
             )
 
         elif ast.get('insert') is not None:
-            self.nome_tabela = list(ast.values())[1]
-
-            if self.tbl == None:
-                self.tbl = Table(self.nome_tabela)
-
             return self._insert_into(
                 tbl_name=ast['insert'],
                 tbl_values=ast['query']['select']
             )
 
         elif ast.get('update') is not None:
-            self.nome_tabela = ast.get('update')
+            tbl_name = ast.get('update')
             set = ast.get('set')
             condition=ast.get('where')
-
-            if self.tbl == None:
-                self.tbl = Table(self.nome_tabela)
             
             return self._update(
+                name_table = tbl_name,
                 update_value=set,
                 update_condicion=condition
             )
 
         elif ast.get('delete') is not None:
-            self.nome_tabela = list(ast.values())[1]
             operation = list(ast['where'].keys())[0]
-
-            if self.tbl == None:
-                self.tbl = Table(self.nome_tabela)
+            tbl_name = list(ast.values())[1]
+            self.__getitem__(tbl_name)
+            
 
             return self._delete(
+                name_table = tbl_name,
                 condicion=[
                     operation,                                      # operador
                     ast['where'][operation][0],                     # nome da coluna
@@ -118,6 +140,43 @@ class Engine():
             else:
                 self.execute(execution.strip())
 
+    def _multiple_statements_file(self, sql:str):
+        if '\n' in sql:
+            list_comands = sub('[\n]', ' ', sql).split(';')[:-1]
+        else:
+            list_comands = sql.split(';')[:-1]
+        
+        for execution in list_comands:
+            if execution.upper().strip() == 'COMMIT':
+                # armazena todos os nomes das tabelas em uma lista
+                list_tables = list(self._transaction.keys())
+                # percorre a lista salvando tadas as modificações que estão na memória
+                for table in list_tables:
+                    self._transaction[table].save()
+                    print(f'COMMIT na tabela {table} foi realizado com sucesso!')
+
+            elif execution.upper().strip() == 'ROLLBACK':
+                self._transaction = dict()
+                print(f'Descartadas todas as alterações desta transação')
+            else:
+                self.execute(execution.strip())
+
+
+    def _load_file(self, sql:str):
+        # Tratando a str para captura o nome do arquivo
+        file_regex = compile(r'[ ](.*?)[;|\n]')
+        mo = file_regex.search(sql)
+        file_name = mo.group(1)
+
+        # abrindo o arquivo:
+        with open(file_name, 'r') as arquivo:
+            str_commands = arquivo.read()
+
+        # removendo comentarios e quebras de linhas
+        commands = sub('[--](.*?)[\n]', '',str_commands)
+        commands = sub('[\n]', '',commands)
+        
+        return commands
 
     def _create_table(self, tbl_name:str, tbl_columns:list):
         # Criação do dicionário que será passado como parâmentro para columns
@@ -132,10 +191,11 @@ class Engine():
             name=tbl_name,
             columns=cols
             ).save()
+        self.__getitem__(tbl_name)
         return f'A Table {tbl_name} foi criada com sucesso!'
 
     def _insert_into(self, tbl_name:str, tbl_values:list):
-
+        table = self.__getitem__(tbl_name)
         values = list()
         for _v_ in tbl_values:
             try:
@@ -143,11 +203,12 @@ class Engine():
             except TypeError:
                 values.append(_v_['value'])
                 
-        self.tbl.append(*values)
+        table.append(*values)
 
 
-    def _update(self,update_value:dict, update_condicion:dict):
-        # Condicion where:
+    def _update(self,name_table:str, update_value:dict, update_condicion:dict):
+        # Condicion where: 
+        table = self.__getitem__(name_table)
         operation = list(update_condicion.keys())[0]
         column_name_where = list(update_condicion.values())[0][0]
         try:
@@ -159,11 +220,11 @@ class Engine():
         columns_name_subs = list(update_value.keys())
 
         # Itera sobre a tabela para percorrer todas as sua linha
-        for idx in range(len(self.tbl)):
+        for idx in range(len(table)):
             # em busca daquelas que atendem às condições da clausula WHERE
-            if Table.operations[operation](self.tbl[idx][column_name_where], value_condicion):
+            if Table.operations[operation](table[idx][column_name_where], value_condicion):
                 # Armazena o conteudo da linha
-                row = self.tbl[idx]
+                row = table[idx]
                 # For para substituir os valores (caso exista mais do que um valor para ser substituido)
                 for name in (columns_name_subs):
                     # Altera o valor da linha selecionado para cada coluna
@@ -173,14 +234,15 @@ class Engine():
                         row[name] = update_value.get(name)
                 
                 # Atualiza a linha, já como valor novo, na tabela
-                self.tbl[idx] = tuple(row.values())
+                table[idx] = tuple(row.values())
 
 
 
-    def _delete(self, condicion:list):
-        for idx in range(len(self.tbl)):
-            if Table.operations[condicion[0]](self.tbl[idx][condicion[1]], condicion[2]):
-                del self.tbl[idx]
+    def _delete(self, name_table:str, condicion:list):
+        table = self.__getitem__(name_table)
+        for idx in range(len(table)):
+            if Table.operations[condicion[0]](table[idx][condicion[1]], condicion[2]):
+                del table[idx]
 
 
     def _distinct(self, table:"Table", distinct_column:str):
