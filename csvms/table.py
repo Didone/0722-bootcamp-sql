@@ -700,7 +700,7 @@ class Table():
             columns=cols,
             data=rows)
     
-        def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
+    def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
         # left outer join
         left_table = self.name
         right_table = other.name
@@ -711,11 +711,9 @@ class Table():
         operation = list(where.keys())[0]
         right_col = list(where.values())[0][1].split('.')[1]
         left_idx = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
-        for left_row in left_table:
-            for right_row in right_table.σ(
-                {operation:
-                [right_col, left_row[left_idx]]
-                }, null=True):
+        for left_row in self:
+            for right_row in other.σ({operation : [left_row[left_idx], right_col]},
+             null=True):
                 left_rows.append(left_row + right_row)
         return Table (
             name=f"({left_table} ᗌᐊ {right_table})",
