@@ -14,6 +14,9 @@ client_socket.setblocking(False)
 
 while True:
     sql = input("> ")
+    if sql == 'exit':
+        print("Disconnecting...")
+        break
     message_header = f"{len(sql):<{HEADERSIZE}}".encode("utf-8")
     client_socket.send(message_header + sql.encode("utf-8"))
     time.sleep(1)

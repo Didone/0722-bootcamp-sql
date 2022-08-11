@@ -15,6 +15,8 @@ class Engine():
         """Execute SQL statement
         :param sql: String with sql statement"""
 
+        changes_text = ''
+
         if file:
             f = open(sql, 'r+')
             sql = ''
@@ -31,10 +33,21 @@ class Engine():
         else:
             commands.append(sql)
         
-        for command in commands:
+        for idx, command in enumerate(commands):
             command = command.replace('\n', '')
             if command.replace(' ', '').upper() == 'COMMIT':
                 self._save_tables()
+                if changes_text == '':
+                    changes_text += '\nNothing to commit\n'
+                else:
+                    changes_text += '\nCommitted\n'
+                if idx == len(commands)-1:
+                    return changes_text
+            elif command.replace(' ', '').upper() == 'ROLLBACK':
+                self.modified_tbls.clear()
+                changes_text += '\nNot Commited | Rollback\n'
+                if idx == len(commands)-1:
+                    return changes_text
             else:
                 try:
                     tokens = parse(command)
@@ -42,36 +55,38 @@ class Engine():
                     continue
 
                 if tokens.get('create table') is not None:
-                    return self._create_table(
+                    changes_text += '\n' + self._create_table(
                         tbl_name=tokens['create table']['name'],
                         tbl_columns=tokens['create table']['columns']
                     )
                 elif tokens.get('insert') is not None:
-                    return self._insert(
+                    changes_text += '\n' + self._insert(
                         tbl_name=tokens['insert'], 
                         values=tokens['query']['select']
                     )
                 elif tokens.get('update') is not None:
-                    return self._update_or_delete(
+                    changes_text += '\n' + self._update_or_delete(
                         tbl_name=tokens['update'], 
                         set=tokens['set'], 
                         where=tokens['where']
                     )
                 elif tokens.get('delete') is not None:
-                    return self._update_or_delete(
+                    changes_text += '\n' + self._update_or_delete(
                         tbl_name=tokens['delete'], 
                         where=tokens['where']
                     )
                 elif tokens.get('select') is not None:
                     tbl = self._select(tokens)
                     print(tbl)
-                    return tbl.show()
+                    return '\n' + tbl.show()
                 elif tokens.get('select_distinct') is not None:
                     tbl = self._select(tokens, distinct=True)
                     print(tbl)
-                    return tbl.show()
+                    return '\n' + tbl.show()
                 else:
                     raise NotImplementedError
+                if idx == len(commands)-1:
+                    return changes_text + '\nNot Committed\n'
 
     def _create_table(self, tbl_name:str, tbl_columns:list) -> str:
         cols = dict()
@@ -130,7 +145,7 @@ class Engine():
                     v = v['literal']
                 set_col_val[k] = v
 
-        for row in range(len(tbl)):
+        for row in range(len(tbl) - 1, 0, -1):
             rlist = tbl[row]
             if op(rlist[op_col], op_val):
                 if set is not None:
@@ -139,11 +154,11 @@ class Engine():
                     tbl[row] = tuple(rlist.values())
                 else:
                     del tbl[row]
+        self.modified_tbls[tbl_name] = tbl
         if set is not None:
             return f"Updated {tbl_name}"
         else:
             return f"Deleted from {tbl_name}"
-        self.modified_tbls[tbl_name] = tbl
 
     def _select(self, sql:dict, distinct:bool=False) -> Table:
 
