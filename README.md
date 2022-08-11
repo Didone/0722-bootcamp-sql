@@ -33,7 +33,7 @@ A.append(3,"Some",0.8)
 # select rows where c4 are greater then 50
 B = A.Π({'mul':[{'literal':100},'c3']},"c4").σ({"gt":['c4',50]})
 # Project columns c1, c2 and c4 and print table
-print(B.π(['c1','c2','c4']))
+print(B.π([{'value':'c1'},{'value':'c2'},{'value':'c4'}]))
 ```
 
 the expected result will be like this
