@@ -699,6 +699,29 @@ class Table():
             name = f"({self.name}Π)",
             columns=cols,
             data=rows)
+    
+        def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
+        # left outer join
+        left_table = self.name
+        right_table = other.name
+        left_cols = dict()
+        left_cols.update({f"{left_table}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{right_table}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+        operation = list(where.keys())[0]
+        right_col = list(where.values())[0][1].split('.')[1]
+        left_idx = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+        for left_row in left_table:
+            for right_row in right_table.σ(
+                {operation:
+                [right_col, left_row[left_idx]]
+                }, null=True):
+                left_rows.append(left_row + right_row)
+        return Table (
+            name=f"({left_table} ᗌᐊ {right_table})",
+            columns=left_cols,
+            data=left_rows
+        )
 
     #TODO: Implement FULL join operator `ᗌᗏ`
     #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
