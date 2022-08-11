@@ -189,14 +189,14 @@ class Engine():
                 if isinstance(element, dict):
                     if element.get('value') is not None:
                         result = result * _change_name(element)
-                    if element.get('inner join') is not None:
-                        result = self._inner_join(result, _change_name(element['inner join']), element['on'])
+                    if element.get('inner join') is not None or element.get('join') is not None:
+                        result = self._inner_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
                     if element.get('right join') is not None or element.get('right outer join') is not None:
                         result = self._right_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
                     if element.get('left join') is not None or element.get('left outer join') is not None:
                         result = self._left_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
-                    if element.get('full join') is not None:
-                        result = self._full_join(result, _change_name(element['full join']), element['on'])
+                    if element.get('full join') is not None or element.get('full outer join') is not None:
+                        result = self._full_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
                     if element.get('select') is not None:
                         result = result * self._select(element, distinct=False)
                     if element.get('select_distinct') is not None:
