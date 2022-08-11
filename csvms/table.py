@@ -88,8 +88,8 @@ class Table():
         'mul': lambda x,y: None if x is None or y is None else x*y,
         'ifnull': lambda x,y: y if x is None else x,
         'coalesce': lambda x,y: y if x is None else x,
-        #TODO: Concatenate two string
-        #TODO: Raises expr1 to the power of expr2.
+        'concat': lambda x,y: None if x is None or y is None else str(x)+str(y),
+        'pow': lambda x,y: None if x is None or y is None else x**y,
     }
     # Supported operations in reverse
     _strtypes_ = {value:key for key, value in dtypes.items()}
@@ -586,22 +586,35 @@ class Table():
         rows = [v for v in self]
         if select != '*': #In case of '*' return all columns
             if not isinstance(select, list):
-                raise NotImplementedError
-            _tc = list() # List of orderd columns and indexes
-            for col in select:
-                # Get column index
+                _tc = list() # List of orderd columns and indexes
+
                 for _i_,_c_ in enumerate(self.columns.keys()):
-                    if col['value']==_c_: #When find the column
+                    if select['value']==_c_: #When find the column
                         _a_ = _c_
-                        if col.get('name') is not None:
-                            _a_ = col['name']
+                        if select.get('name') is not None:
+                            _a_ = select['name']
                         _tc.append((_i_,_c_,_a_)) #Add to the list with the index
                         break #Exit from loop when find
-                    elif col.get('name')==_c_:
-                        _a_ = _c_ = col['name']
+                    elif select.get('name')==_c_:
+                        _a_ = _c_ = select['name']
                         _tc.append((_i_,_c_,_a_)) #Add to the list with the index
-            if len(_tc)!=len(select):
-                raise ColumnException("Cant find all columns")
+
+            else:
+                _tc = list() # List of orderd columns and indexes
+                for col in select:
+                    # Get column index
+                    for _i_,_c_ in enumerate(self.columns.keys()):
+                        if col['value']==_c_: #When find the column
+                            _a_ = _c_
+                            if col.get('name') is not None:
+                                _a_ = col['name']
+                            _tc.append((_i_,_c_,_a_)) #Add to the list with the index
+                            break #Exit from loop when find
+                        elif col.get('name')==_c_:
+                            _a_ = _c_ = col['name']
+                            _tc.append((_i_,_c_,_a_)) #Add to the list with the index
+                if len(_tc)!=len(select):
+                    raise ColumnException("Cant find all columns")
             rows = list()
             for row in self: # For each row
                 _r_ = tuple() # Create a new tuple
@@ -611,7 +624,7 @@ class Table():
             cols = {a:self.columns[k] for _,k,a in _tc}
         return Table(name=f"({self.name}π)",columns=cols,data=rows)
 
-    def σ(self, condition:Dict[str,list], null=False) -> "Table":
+    def σ(self, condition:Dict[str,list]=None, null=False) -> "Table":
         """Selection Operator (σ)
         :param condition: A expression composed by the logic operation and list of values.
                           See 'operations' dictionary to get the list of valid options
@@ -643,16 +656,19 @@ class Table():
         | exists  | is not None |
 
         """
-        rows = list()
-        for idx, row in enumerate(self):
-            if self.logical_evaluation(self[idx], condition):
-                rows.append(row)
-        if null and len(rows)==0:
-            rows.append(self.empty_row)
-        return Table(
-            name = f"({self.name}σ)",
-            columns={k:v for k,v in self.columns.items()},
-            data=rows)
+        if condition is not None:
+            rows = list()
+            for idx, row in enumerate(self):
+                if self.logical_evaluation(self[idx], condition):
+                    rows.append(row)
+            if null and len(rows)==0:
+                rows.append(self.empty_row)
+            return Table(
+                name = f"({self.name}σ)",
+                columns={k:v for k,v in self.columns.items()},
+                data=rows)
+        else:
+            return self
 
     def ᐅᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
         """Join Operator (⋈)"""
@@ -662,49 +678,214 @@ class Table():
         tbl.name = f"({self.name}⋈{other.name})"
         return tbl
 
-    def ρ(self, alias:str) -> "Table":
+    def ρ(self, alias:str=None) -> "Table":
         """Rename Operator (ρ)"""
-        # Function to rename column names for the new table name
-        rename = lambda x: x if x.count('.')==0 else x.split('.')[-1]
-        return Table(
-            # Set new table name
-            name = f"{alias}",
-            # Copy all columns from source table
-            columns={rename(k):v for k,v in self.columns.items()},
-            # Copy all rows from source table
-            data=[r for r in self])
+        if alias is not None:
+            # Function to rename column names for the new table name
+            rename = lambda x: x if x.count('.')==0 else x.split('.')[-1]
+            return Table(
+                # Set new table name
+                name = f"{alias}",
+                # Copy all columns from source table
+                columns={rename(k):v for k,v in self.columns.items()},
+                # Copy all rows from source table
+                data=[r for r in self])
+        else:
+            return self
 
-    def Π(self, extend:dict, alias:str=None) -> "Table":
+    def Π(self, extend:dict=None, alias:str=None) -> "Table":
         """Extended projection Operator (Π)"""
-        rows = list() # New list of rows
-        dtype = None # Use to store the data type of the new extended column
-        for idx, row in enumerate(self): # For each row
-            val = self.extend(self[idx],extend) # Evaluated expression
-            if dtype is None: # If is the first evaluation
-                dtype = type(val) # Use the result data type
-            # if you find any different type in the next rows
-            elif dtype != type(val) and val is not None:
-                # Raise an Data exeption to abort the operation
-                raise DataException(f"{type(val)} error")
-            # If Successful add new value to the row tuple
-            rows.append(row + (val,))
-        # Copy the columns from source table
-        cols = {k:v for k,v in self.columns.items()}
-        # Add new extended column
-        if alias is None: # Remova some characters and use the expression as column name
-            cols[f"{str(extend).replace(' ','').replace('.',',')}"]=dtype
-        else: # Use alias for the new extended column
-            cols[alias]=dtype
-        return Table(
-            name = f"({self.name}Π)",
-            columns=cols,
-            data=rows)
+        if extend is not None:
+            rows = list() # New list of rows
+            dtype = None # Use to store the data type of the new extended column
+            for idx, row in enumerate(self): # For each row
+                val = self.extend(self[idx],extend) # Evaluated expression
+                if dtype is None: # If is the first evaluation
+                    dtype = type(val) # Use the result data type
+                # if you find any different type in the next rows
+                elif dtype != type(val) and val is not None:
+                    # Raise an Data exeption to abort the operation
+                    raise DataException(f"{type(val)} error")
+                # If Successful add new value to the row tuple
+                rows.append(row + (val,))
+            # Copy the columns from source table
+            cols = {k:v for k,v in self.columns.items()}
+            # Add new extended column
+            if alias is None: # Remova some characters and use the expression as column name
+                cols[f"{str(extend).replace(' ','').replace('.',',')}"]=dtype
+            else: # Use alias for the new extended column
+                cols[alias]=dtype
+            return Table(
+                name = f"({self.name}Π)",
+                columns=cols,
+                data=rows)
+        else:
+            return self
 
-    #TODO: Implement FULL join operator `ᗌᗏ`
-    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
-    #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
-    #TODO: Implement LEFT ANTI join operator `ᐅ`
-    #TODO: Implement RIGHT ANTI join operator `◁`
+    def ᗌᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        left_cols = dict()
+        left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                left_rows.append(row_left_table + row_right_table)
+        
+        return Table(
+            name=f"({self.name}ᗌᐊ{other.name})",
+            columns=left_cols,
+            data=left_rows)
+
+
+    def ᐅᗏ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        right_cols = dict()
+        right_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        right_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                right_rows.append(row_left_table + row_right_table)
+
+        return Table(
+            name=f"({self.name}ᐅᗏ{other.name})",
+            columns=right_cols,
+            data=right_rows)           
+
+
+    # Implement FULL join operator `ᗌᗏ`
+    def ᗌᗏ(self, other:"Table", where:Dict[str,list]) -> "Table":      
+        full_cols = dict()
+        full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        full_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        full_rows = list()
+
+        # σ values left join
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                full_rows.append(row_left_table + row_right_table)
+
+        # σ values right
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                full_rows.append(row_left_table + row_right_table)
+
+        return Table(
+            name=f"({self.name}ᗌᗏ{other.name})",
+            columns=full_cols,
+            data=list(dict.fromkeys(full_rows)))  
+
+    # Implement RIGHT SEMI join operator `ᐳᐊ`
+    def ᐳᐊ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        right_semi_cols = dict()
+        # right_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        right_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_semi_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                right_semi_rows.append(row_right_table)
+        
+        return Table(
+            name=f"({self.name}ᐳᐊ{other.name})",
+            columns=right_semi_cols,
+            data=right_semi_rows)
+
+    # Implement LEFT SEMI join operator `ᐅᐸ`
+    def ᐅᐸ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        left_semi_cols = dict()
+        left_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        # left_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_semi_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                left_semi_rows.append(row_left_table)
+        
+        return Table(
+            name=f"({self.name}ᐅᐸ{other.name})",
+            columns=left_semi_cols,
+            data=left_semi_rows)
+
+    #Implement LEFT ANTI join operator `ᐅ`
+    def ᐅ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        left_semi_cols = dict()
+        left_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_semi_rows = list()
+    
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][1].split('.')[1]
+        pos_column = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+        pos_column_semi = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+
+        for row_left_table in self:    # For each row in left table
+            for row_right_table in other.σ({operation:[column_name, row_left_table[pos_column]]}, null=True):    # For each row in right table
+                if row_right_table[pos_column_semi] is None:
+                    left_semi_rows.append(row_left_table)
+
+        
+        return Table(
+            name=f"({self.name}ᐅ{other.name})",
+            columns=self.columns,
+            data=left_semi_rows)
+
+    # Implement RIGHT ANTI join operator `◁`
+    def ᐊ(self, other:"Table", where:Dict[str,list]) -> "Table": 
+        rigth_semi_cols = dict()
+        rigth_semi_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        rigth_semi_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_semi_rows = list()
+
+        # σ values 
+        operation = list(where.keys())[0]
+        column_name = list(where.values())[0][0].split('.')[1]
+        pos_column = list(other.columns.keys()).index(list(where.values())[0][1].split('.')[1])
+        pos_column_semi = list(self.columns.keys()).index(list(where.values())[0][0].split('.')[1])
+
+        for row_right_table in other:    # For each row in right table
+            for row_left_table in self.σ({operation:[column_name,row_right_table[pos_column]]}, null=True):      # For each row in left table
+                if row_left_table[pos_column_semi] is None:
+                    right_semi_rows.append(row_right_table)
+
+        return Table(
+            name=f"({self.name}ᐊ{other.name})",
+            columns=other.columns,
+            data=right_semi_rows)
+
+
+
+
 
 class Index():
     """Represents a table index"""
