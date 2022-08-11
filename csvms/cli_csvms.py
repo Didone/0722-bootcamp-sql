@@ -3,6 +3,7 @@ from csvms.table import Table
 import cmd
 from docopt import docopt
 
+
 #!/usr/bin/env python
 __doc__ = """
 This example uses docopt with the built in cmd module to demonstrate an
