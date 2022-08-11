@@ -11,7 +11,7 @@ class Engine():
     def __init__(self) -> None:
         self.modified_tbls = dict()    
 
-    def execute(self, sql:str, file=False):
+    def execute(self, sql:str, file=False) -> str:
         """Execute SQL statement
         :param sql: String with sql statement"""
 
@@ -42,34 +42,38 @@ class Engine():
                     continue
 
                 if tokens.get('create table') is not None:
-                    self._create_table(
+                    return self._create_table(
                         tbl_name=tokens['create table']['name'],
                         tbl_columns=tokens['create table']['columns']
                     )
                 elif tokens.get('insert') is not None:
-                    self._insert(
+                    return self._insert(
                         tbl_name=tokens['insert'], 
                         values=tokens['query']['select']
                     )
                 elif tokens.get('update') is not None:
-                    self._update_or_delete(
+                    return self._update_or_delete(
                         tbl_name=tokens['update'], 
                         set=tokens['set'], 
                         where=tokens['where']
                     )
                 elif tokens.get('delete') is not None:
-                    self._update_or_delete(
+                    return self._update_or_delete(
                         tbl_name=tokens['delete'], 
                         where=tokens['where']
                     )
                 elif tokens.get('select') is not None:
-                    print(self._select(tokens))
+                    tbl = self._select(tokens)
+                    print(tbl)
+                    return tbl.show()
                 elif tokens.get('select_distinct') is not None:
-                    print(self._select(tokens, distinct=True))
+                    tbl = self._select(tokens, distinct=True)
+                    print(tbl)
+                    return tbl.show()
                 else:
                     raise NotImplementedError
 
-    def _create_table(self, tbl_name:str, tbl_columns:list):
+    def _create_table(self, tbl_name:str, tbl_columns:list) -> str:
         cols = dict()
         for c in tbl_columns:
             cname = c['name']
@@ -81,8 +85,9 @@ class Engine():
             name=tbl_name,
             columns=cols
         ).save()
+        return f"Table {tbl_name} created"
 
-    def _insert(self, tbl_name:str, values:list):
+    def _insert(self, tbl_name:str, values:list) -> str:
         new_row = list()
         tbl = self._load_table(tbl_name)
         for v in values:
@@ -93,8 +98,9 @@ class Engine():
 
         tbl.append(*new_row)
         self.modified_tbls[tbl_name] = tbl
+        return f"Inserted into {tbl_name}"
 
-    def _update_or_delete(self, tbl_name:str, set:dict or None = None, where=dict):
+    def _update_or_delete(self, tbl_name:str, set:dict or None = None, where=dict) -> str:
         """Atualiza ou Deleta linhas da tabela baseado em condições passadas como parâmetro\n
            Caso 'set' não receba parâmetros a função agira como DELETE\n
            Caso contrário agira como UPDATE"""
@@ -133,9 +139,13 @@ class Engine():
                     tbl[row] = tuple(rlist.values())
                 else:
                     del tbl[row]
+        if set is not None:
+            return f"Updated {tbl_name}"
+        else:
+            return f"Deleted from {tbl_name}"
         self.modified_tbls[tbl_name] = tbl
 
-    def _select(self, sql:dict, distinct:bool=False):
+    def _select(self, sql:dict, distinct:bool=False) -> Table:
 
         def _change_name(table) -> Table:
             if isinstance(table, dict):
@@ -161,20 +171,24 @@ class Engine():
         if isinstance(f, list):
             result = _change_name(f[0]) if isinstance(f[0], dict) else Table(f[0])
             for element in f[1:]:
-                if element.get('value') is not None:
+                if isinstance(element, dict):
+                    if element.get('value') is not None:
+                        result = result * _change_name(element)
+                    if element.get('inner join') is not None:
+                        result = self._inner_join(result, _change_name(element['inner join']), element['on'])
+                    if element.get('right join') is not None or element.get('right outer join') is not None:
+                        result = self._right_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
+                    if element.get('left join') is not None or element.get('left outer join') is not None:
+                        result = self._left_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
+                    if element.get('full join') is not None:
+                        result = self._full_join(result, _change_name(element['full join']), element['on'])
+                    if element.get('select') is not None:
+                        result = result * self._select(element, distinct=False)
+                    if element.get('select_distinct') is not None:
+                        result = result * self._select(element, distinct=True)
+                else:
                     result = result * _change_name(element)
-                if element.get('inner join') is not None:
-                    result = self._inner_join(result, _change_name(element['inner join']), element['on'])
-                if element.get('right join') is not None or element.get('right outer join') is not None:
-                    result = self._right_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
-                if element.get('left join') is not None or element.get('left outer join') is not None:
-                    result = self._left_join(result, _change_name(element[list(element.keys())[0]]), element['on'])
-                if element.get('full join') is not None:
-                    result = self._full_join(result, _change_name(element['full join']), element['on'])
-                if element.get('select') is not None:
-                    result = result * self._select(element, distinct=False)
-                if element.get('select_distinct') is not None:
-                    result = result * self._select(element, distinct=True)
+
                     
         elif isinstance(f, dict):
             result = Table(f['value'])
