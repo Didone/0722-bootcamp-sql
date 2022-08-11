@@ -8,6 +8,8 @@ from os import remove, makedirs
 from os.path import exists
 from pathlib import Path
 from typing import List, Dict, Any
+
+from numpy import where
 # Local module
 from csvms import logger
 from csvms.schema import Database
@@ -86,8 +88,8 @@ class Table():
         'sub': lambda x,y: None if x is None or y is None else x-y,
         'div': lambda x,y: None if x is None or y is None else x/y,
         'mul': lambda x,y: None if x is None or y is None else x*y,
-        #TODO: Concatenate two string
-        #TODO: Raises expr1 to the power of expr2.
+        'concat':lambda x,y: None if x is None or y is None else str(x)+str(y),
+        'pow':lambda x,y: None if x is None  or y is None else x**y
     }
     # Supported operations in reverse
     _strtypes_ = {value:key for key, value in dtypes.items()}
@@ -652,14 +654,6 @@ class Table():
             columns={k:v for k,v in self.columns.items()},
             data=rows)
 
-    def ᐅᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
-        """Join Operator (⋈)"""
-        # Create a new table with the Cartesian product of self and otther
-        tbl = (self * other)\
-            .σ(where) # And select rows where the join condition is true
-        tbl.name = f"({self.name}⋈{other.name})"
-        return tbl
-
     def ρ(self, alias:str) -> "Table":
         """Rename Operator (ρ)"""
         # Function to rename column names for the new table name
@@ -698,9 +692,126 @@ class Table():
             columns=cols,
             data=rows)
 
-    #TODO: Implement FULL join operator `ᗌᗏ`
-    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
+    def ᐅᐊ(self, other:"Table", where:Dict[str,list]) -> "Table":
+        """Join Operator (⋈)"""
+        # Create a new table with the Cartesian product of self and otther
+        tbl = (self * other)\
+            .σ(where) # And select rows where the join condition is true
+        tbl.name = f"({self.name}⋈{other.name})"
+        return tbl
+
+    def ᗌᗏ(self,other:"Table",where:Dict[str,list]) -> "Table":
+        """ Full Join (⟗)"""
+        valor = where['eq'][0].split('.')[1]
+        tbl1 = where['eq'][0].split('.')[0]
+        tbl2 = where['eq'][1].split('.')[0]
+
+        full_cols = dict()
+        full_cols.update({f"{tbl1}.{k}":v for k, v in self.columns.items()})
+        full_cols.update({f"{tbl2}.{k}":v for k, v in other.columns.items()})
+
+        full_rows = list()
+
+        for x in self:
+            for y in other.σ({'eq':[valor,x[1]]},null=True):
+                full_rows.append(x + y)
+        for y in other:
+            for x in self.σ({'eq':[valor,y[0]]},null=True):
+                full_rows.append(x + y)
+        
+        tbl = Table(
+                name="tmp.full",
+                columns=full_cols,
+                data=list(dict.fromkeys(full_rows))
+            )
+
+        return tbl
+        
+    def ᗌᐊ(self,other:"Table",where:Dict[str,list]) -> "Table":
+        """Left Join(⟕)"""
+        valor = where['eq'][0].split('.')[1]
+        tbl1 = where['eq'][0].split('.')[0]
+        tbl2 = where['eq'][1].split('.')[0]
+        
+        
+        left_cols = dict()
+        left_cols.update({f"{tbl1}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{tbl2}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+        for x in self:
+
+            if len(x) > 1:
+                for y in other.σ({'eq':[valor,x[1]]}, null=True):
+                    left_rows.append(x + y)
+            else:
+                for y in other.σ({'eq':[valor,x[0]]}, null=True):
+                    left_rows.append(x + y)
+
+
+        tbl = Table(
+            name='LEFT JOIN',
+            columns=left_cols,
+            data=left_rows,
+            )
+
+        return tbl
+    
+    def ᐅᗏ (self,other:"Table",where:Dict[str,list]) -> "Table":
+        """Right Join(⟖)"""
+        valor = where['eq'][0].split('.')[1]
+        tbl1 = where['eq'][0].split('.')[0]
+        tbl2 = where['eq'][1].split('.')[0]
+
+        right_cols = dict()
+        right_cols.update({f"{tbl1}.{k}":v for k, v in self.columns.items()})
+        right_cols.update({f"{tbl2}.{k}":v for k, v in other.columns.items()})
+        right_rows = list()
+    
+        for y in other:
+            
+            for x in self.σ({'eq':[valor,y[0]]}, null=True):
+            
+                right_rows.append(x + y)
+
+        tbl =  Table(
+                name="RIGHT JOIN",
+                columns=right_cols,
+                data=right_rows
+            )
+        
+        return tbl
+    
+    def distinct(self,colum_name:str,alias=None) -> "Table":
+        #metodo parcialmente implementado
+        try:
+            colum_name = colum_name.split('.')
+            colum = colum_name[1]
+            tbl_name = colum_name[0]
+
+            cols = dict()
+            cols.update({f"{tbl_name}.{k}":v for k, v in self.columns.items()})
+            rows = list()
+
+            for x in self :
+                if x in rows:
+                    pass
+                else:
+                    rows.append(x)
+
+            tbl =Table(
+                name='Distinct_table',
+                columns=cols,
+                data=rows
+            )
+            
+        
+
+            return tbl
+        except:
+            pass
+    
     #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
+    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
     #TODO: Implement LEFT ANTI join operator `ᐅ`
     #TODO: Implement RIGHT ANTI join operator `◁`
 
