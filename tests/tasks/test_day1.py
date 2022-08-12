@@ -7,6 +7,7 @@ from csvms.table import Table
 
 eng = Engine()
 
+
 def test_criacao():
     """https://github.com/Didone/csvms/issues/7"""
     eng.execute("""
@@ -14,7 +15,8 @@ def test_criacao():
         nm_fruta TEXT ,
         tp_fruta TEXT 
     )""")
-    assert not exists(f"{Database.FILE_DIR}/{Database.DEFAULT_DB}/lista_frutas")
+    assert not exists(
+        f"{Database.FILE_DIR}/{Database.DEFAULT_DB}/lista_frutas")
     assert Catalog(Database.FILE_DIR).objects[f'{Database.DEFAULT_DB}.lista_frutas'] == {
         'name': f'{Database.DEFAULT_DB}.lista_frutas',
         'columns': {
@@ -34,6 +36,7 @@ def test_criacao():
             'vl_fruta': 'float'},
         'indexes': {}}
 
+
 def test_inclusao():
     """https://github.com/Didone/csvms/issues/8"""
     eng.execute("""
@@ -48,6 +51,7 @@ def test_inclusao():
         ('bergamota', 'azedo'),
         ('maçã', 'doce')]
 
+
 def test_atualizacao():
     """https://github.com/Didone/csvms/issues/9"""
     eng.execute("""
@@ -61,6 +65,7 @@ def test_atualizacao():
         ('bergamota', 'azedo'),
         ('maçã', 'doce')]
 
+
 def test_insercao():
     """https://github.com/Didone/csvms/issues/10"""
     eng.execute("""
@@ -68,8 +73,9 @@ def test_insercao():
     INSERT INTO tipo_frutas VALUES ('amargo',2.0);
     COMMIT;""")
     assert [r for r in Table(f'{Database.DEFAULT_DB}.tipo_frutas')] == [
-        ('doce',1.5),
-        ('amargo',2.0)]
+        ('doce', 1.5),
+        ('amargo', 2.0)]
+
 
 def test_delecao():
     """https://github.com/Didone/csvms/issues/11"""

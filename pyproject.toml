@@ -19,6 +19,7 @@ python = "^3.8"
 ipykernel = { version="^6.15.0", optional = true}
 mo-sql-parsing = { version="^8.185.22160", optional = true}
 docopt = { version="^0.6.2", optional = true}
+jupyter = "^1.0.0"
 
 [tool.poetry.extras]
 bootcamp = ["ipykernel","mo-sql-parsing","docopt"]
