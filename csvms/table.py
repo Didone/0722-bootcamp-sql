@@ -88,8 +88,8 @@ class Table():
         'mul': lambda x,y: None if x is None or y is None else x*y,
         'ifnull': lambda x,y: y if x is None else x,
         'coalesce': lambda x,y: y if x is None else x,
-        #TODO: Concatenate two string
-        #TODO: Raises expr1 to the power of expr2.
+        'concat': lambda x,y: None if x is None or y is None else str(x)+str(y),
+        'pow': lambda x,y: None if x is None or y is None else pow(x,y)
     }
     # Supported operations in reverse
     _strtypes_ = {value:key for key, value in dtypes.items()}
@@ -700,11 +700,157 @@ class Table():
             columns=cols,
             data=rows)
 
-    #TODO: Implement FULL join operator `ᗌᗏ`
-    #TODO: Implement LEFT SEMI join operator `ᐅᐸ`
-    #TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
-    #TODO: Implement LEFT ANTI join operator `ᐅ`
-    #TODO: Implement RIGHT ANTI join operator `◁`
+    def ᗌᐊ(self, other:"Table", where=dict) -> "Table":
+        """Left Outer Join Operator (⟕)"""
+        left_cols = dict()
+        left_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        left_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        left_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                left_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᗌᐊ{other.name}",
+            columns=left_cols,
+            data=left_rows
+        )
+    
+    def ᐅᗏ(self, other:"Table", where=dict) -> "Table":
+        """Right Outer Join Operator (⟖)"""
+        right_cols = dict()
+        right_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        right_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        right_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                right_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᐅᗏ{other.name}",
+            columns=right_cols,
+            data=right_rows
+        )
+
+    def ᗌᗏ(self, other:"Table", where=dict) -> "Table":
+        """Full Outer Join Operator (⟗)"""
+        full_cols = dict()
+        full_cols.update({f"{self.name}.{k}":v for k, v in self.columns.items()})
+        full_cols.update({f"{other.name}.{k}":v for k, v in other.columns.items()})
+        full_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                full_rows.append(s + o)
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                full_rows.append(s + o)
+
+        return Table(
+            name=f"{self.name}ᗌᗏ{other.name}",
+            columns=full_cols,
+            data=list(dict.fromkeys(full_rows))
+        )
+
+    def ᐅᐸ(self, other:"Table", where=dict) -> "Table":
+        """Left Semi Join Operator (⋉)"""
+        tbl = Table(
+            name=f"{self.name}ᐅᐸ{other.name}",
+            columns=self.columns
+        )
+        aux_tbl = (self * other).σ(where)
+        for row in aux_tbl:
+            tbl.append(*(row[:len(self.columns)]))
+        return tbl
+        
+    def ᐳᐊ(self, other:"Table", where=dict) -> "Table":
+        """Right Semi Operator (⋊)"""
+        tbl = Table(
+            name=f"{self.name}ᐅᐸ{other.name}",
+            columns=self.columns
+        )
+        aux_tbl = (self * other).σ(where)
+        for row in aux_tbl:
+            tbl.append(*(row[len(self.columns):]))
+        return tbl
+
+    def ᐅ(self, other:"Table", where=dict) -> "Table":
+        """Left Anti Join Operator (▷)"""
+        left_anti_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_o = comp_col_o[comp_col_o.rfind('.') + 1:]
+        s_col = list(self.columns.keys()).index(comp_col_s[comp_col_s.rfind('.') + 1:])
+        o_col = list(other.columns.keys()).index(comp_col_o)
+        
+        for s in self:
+            for o in other.σ({op:[comp_col_o,s[s_col]]},null=True):
+                if o[o_col] is None:
+                    left_anti_rows.append(s)
+
+        return Table(
+            name=f"{self.name}ᐅ{other.name}",
+            columns=self.columns,
+            data=left_anti_rows
+        )
+
+    def ᐊ(self, other:"Table", where=dict) -> "Table":
+        """Right Anti Join Operator (◁)"""
+        right_anti_rows = list()
+
+        where=list(where.items())[0]
+        op = where[0]
+        comp_col_s = str(where[1][0])
+        comp_col_o = str(where[1][1])
+
+        comp_col_s = comp_col_s[comp_col_s.rfind('.') + 1:]
+        o_col = list(other.columns.keys()).index(comp_col_o[comp_col_o.rfind('.') + 1:])
+        s_col = list(self.columns.keys()).index(comp_col_s)
+        
+        for o in other:
+            for s in self.σ({op:[comp_col_s,o[o_col]]},null=True):
+                if s[s_col] is None:
+                    right_anti_rows.append(o)
+
+        return Table(
+            name=f"{self.name}ᐊ{other.name}",
+            columns=other.columns,
+            data=right_anti_rows
+        )
 
 class Index():
     """Represents a table index"""
