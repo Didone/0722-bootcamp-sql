@@ -2,10 +2,11 @@
 See https://github.com/Didone/csvms/discussions/6
 """
 
+import os
+import re
 from mo_sql_parsing import parse
 from csvms.table import Table
 from json import loads
-import os
 
 
 class Engine():
@@ -20,6 +21,7 @@ class Engine():
         # TODO Implement your SQL engine
         inclusion = []
         sql_lista = sql.split(";")
+        print(sql_lista)
         sql_lista = [item.strip().lower()
                      for item in sql_lista if item.strip().lower() != '']
         self.commit = "commit" if sql_lista[-1] == "commit" else ""
@@ -92,6 +94,29 @@ class Engine():
                 else:
                     print(
                         f"O registro solicitado foi excluido de {name} com sucesso!\n")
+
+    def sql_file_recovering(self, name: str):
+        try:
+            if os.path.exists(os.getcwd() + f"/{name}.sql"):
+
+                with open(os.getcwd() + f"/{name}.sql") as f:
+                    sql_file_data = f.read()
+        except:
+            print("Arquivo sql não encontrado.")
+        else:
+            print("Arquivo encontrado.")
+            return self.sql_file_processing(sql_file_data)
+
+    def sql_file_processing(self, file_data: str):
+        file_data = re.sub(r"--\s*([a-zA-Z0-9 ':(ãõç]+)", "",
+                           file_data)
+        fd = file_data.strip().split(";")
+        """ pattern = re.compile(r"--\s*([a-zA-Z0-9 ':(ãõç]+)")
+        matches = pattern.finditer(file_data)
+        fd = file_data.strip().split(';')
+        for match in matches:
+            print(match) """
+        return fd
 
     def _create_table(self, tbl_name: str, tbl_columns: list):
         if (tbl_name and tbl_columns) is not None:

@@ -889,6 +889,7 @@ class Table():
             data=rows
         )
         return tbl
+
     # TODO: Implement LEFT SEMI join operator `ᐅᐸ`
 
     def ᐅᐸ(self, other: "Table", where: Dict[str, list]) -> "Table":
@@ -903,6 +904,7 @@ class Table():
             data=rows
         )
         return tbl
+
     # TODO: Implement RIGHT SEMI join operator `ᐳᐊ`
 
     def ᐳᐊ(self, other: "Table", where: Dict[str, list]) -> "Table":
@@ -918,6 +920,7 @@ class Table():
             data=rows
         )
         return tbl
+
     # TODO: Implement LEFT ANTI join operator `ᐅ`
 
     def ᐅ(self, other: "Table", where: Dict[str, list]) -> "Table":
