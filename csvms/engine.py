@@ -110,7 +110,8 @@ class Engine():
     def sql_file_processing(self, file_data: str):
         file_data = re.sub(r"--\s*([a-zA-Z0-9 ':(ãõç]+)", "",
                            file_data)
-        fd = file_data.strip().split(";")
+        fd = file_data.strip().replace("\n", "").replace("  ", "").split(";")
+        fd.remove("")
         """ pattern = re.compile(r"--\s*([a-zA-Z0-9 ':(ãõç]+)")
         matches = pattern.finditer(file_data)
         fd = file_data.strip().split(';')
