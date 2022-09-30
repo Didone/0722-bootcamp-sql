@@ -20,80 +20,104 @@ class Engine():
         :param sql: String with sql statement"""
         # TODO Implement your SQL engine
         inclusion = []
-        sql_lista = sql.split(";")
-        print(sql_lista)
-        sql_lista = [item.strip().lower()
-                     for item in sql_lista if item.strip().lower() != '']
-        self.commit = "commit" if sql_lista[-1] == "commit" else ""
-        sql_lista.remove(
-            self.commit) if "commit" in sql_lista else ""
-        statement = sql.lower().split()[0]
-        if statement == 'insert':
-            for sql_insert in sql_lista:
-                ast = parse(sql_insert)
-                value_extraction = ast['query']['select']
-                name = ast['insert']
-                values = ()
-                for pos_value in range(len(value_extraction)):
-                    if type(value_extraction[pos_value].get('value')) is dict:
-                        values += (
-                            list(value_extraction[pos_value].get('value').values())[0], )
+        statement_history = []
+        sql_data = sql.split(";")
+        for sql_iter in sql_data:
+            sql_str = sql_iter.strip().lower()
+            self.commit = "commit" if sql_str == "commit" else ""
+            sql_str = "" if self.commit == sql_str else sql_str
+            if not self.commit:
+                statement = sql_str.lower().split()[0]
+                statement_history.append(statement)
+            if sql_str != "":
+                ast = parse(sql_str)
+                name = ast[statement +
+                           " table"] if statement == "create" else ast[statement]
+            data = self._tables_data(name)
+            if data is not None:
+                data_list = data.replace("\n", ";").split(";")
+                previous_pos = 0
+                for i in range(1, len(data_list) + 1):
+                    if i % 2 == 0:
+                        inclusion.append(tuple(data_list[previous_pos:i]))
+                        previous_pos = i
+            """ sql_lista = [item.strip().lower()
+                         for item in sql_iter if item.strip().lower() != ''] """
+            if len(sql_str) > 0 or self.commit:
+                #print("sql_str:", sql_str, "statement:", statement)
+                if statement == 'insert':
+                    ast = parse(sql_str)
+                    value_extraction = ast['query']['select']
+                    insert_name = ast['insert']
+                    values = ()
+                    for pos_value in range(len(value_extraction)):
+                        if type(value_extraction[pos_value].get('value')) is dict:
+                            values += (
+                                list(value_extraction[pos_value].get('value').values())[0], )
+                        else:
+                            values += (
+                                value_extraction[pos_value].get("value"), )
+                    inclusion.append(values)
+                    #print(name, inclusion)
+                if self.commit:
+                    try:
+                        self._insert_into(
+                            tbl_name=insert_name,
+                            tbl_values=inclusion
+                        )
+                    except Exception as e:
+                        print(e)
                     else:
-                        values += (value_extraction[pos_value].get("value"), )
-                inclusion.append(values)
-            try:
-                self._insert_into(
-                    tbl_name=name,
-                    tbl_values=inclusion
-                )
-            except:
-                print("Erro. Tabela não informada|registro já inserido|faltando.\n")
-            else:
-                print("Resgistros inseridos com sucesso!\n")
-        else:
-            sql = ' '.join(sql_lista)
-            ast = parse(sql)
-            if statement == 'create':
-                name = ast['create table']['name']
-                column = ast['create table']['columns']
-                try:
-                    self._create_table(
-                        tbl_name=name,
-                        tbl_columns=column
-                    )
-                except:
-                    print("Erro. Tabela não foi criada.\n")
-                else:
-                    print(f"A Tabela {name} foi criada com sucesso!\n")
-            if statement == 'update':
-                set_column = list(ast['set'].keys())[0]
-                set_value = ast['set'][set_column]['literal']
-                where_value = ast['where']['eq'][1]['literal']
-                name = ast['update']
-                update_dict = {
-                    'set_value': set_value, 'where_value': where_value}
-                try:
-                    self._update_table(
-                        tbl_name=name,
-                        update_data=update_dict
-                    )
-                except:
-                    print("Erro. Tabela não foi atualizada.\n")
-                else:
-                    print(f"A Tabela {name} foi atualizada com sucesso!\n")
-            if statement == 'delete':
-                where_value = ast['where']['eq'][1]['literal']
-                name = ast['delete']
-                try:
-                    self._delete_table(
-                        tbl_name=name,
-                        delete_data=where_value
-                    )
-                except:
-                    print("Erro. Tabela não foi excluida.\n")
-                else:
-                    print(
-                        f"O registro solicitado foi excluido de {name} com sucesso!\n")
+                        print("Resgistros inseridos com sucesso!\n")
+                if statement in ["create", "delete", "update"] or self.commit:
+                    sql = sql_str
+                    if sql != "":
+                        ast = parse(sql)
+                    if statement == 'create':
+                        create_name = ast['create table']['name']
+                        column = ast['create table']['columns']
+                        try:
+                            self._create_table(
+                                tbl_name=create_name,
+                                tbl_columns=column
+                            )
+                        except:
+                            print("Erro. Tabela não foi criada.\n")
+                        else:
+                            print(
+                                f"A Tabela {create_name} foi criada com sucesso!\n")
+                    if statement == 'update':
+                        set_column = list(ast['set'].keys())[0]
+                        set_value = ast['set'][set_column]['literal']
+                        where_value = ast['where']['eq'][1]['literal']
+                        update_name = ast['update']
+                        update_dict = {
+                            'set_value': set_value, 'where_value': where_value}
+                    if self.commit and 'update' in statement_history:
+                        try:
+                            self._update_table(
+                                tbl_name=update_name,
+                                update_data=update_dict
+                            )
+                        except:
+                            print("Erro. Tabela não foi atualizada.\n")
+                        else:
+                            print(
+                                f"A Tabela {update_name} foi atualizada com sucesso!\n")
+                    if statement == 'delete':
+                        where_value = ast['where']['eq'][1]['literal']
+                        delete_name = ast['delete']
+                    if self.commit and 'delete' in statement_history:
+                        try:
+                            self._delete_table(
+                                tbl_name=delete_name,
+                                delete_data=where_value
+                            )
+                        except:
+                            print("Erro. Tabela não foi excluida.\n")
+                        else:
+                            print(
+                                f"O registro solicitado foi excluido de {delete_name} com sucesso!\n")
 
     def sql_file_recovering(self, name: str):
         try:
@@ -104,20 +128,22 @@ class Engine():
         except:
             print("Arquivo sql não encontrado.")
         else:
-            print("Arquivo encontrado.")
-            return self.sql_file_processing(sql_file_data)
+            print("Arquivo encontrado e processado.")
+            file_str = self.sql_file_processing(sql_file_data)
+            self.execute(file_str)
 
-    def sql_file_processing(self, file_data: str):
+    def sql_file_processing(self, file_data: str) -> str:
         file_data = re.sub(r"--\s*([a-zA-Z0-9 ':(ãõç]+)", "",
                            file_data)
-        fd = file_data.strip().replace("\n", "").replace("  ", "").split(";")
-        fd.remove("")
+        file_lista = file_data.strip().replace("\n", "").replace("  ", "").split(";")
+        file_lista.remove("")
+        file_str = ";".join(file_lista)
         """ pattern = re.compile(r"--\s*([a-zA-Z0-9 ':(ãõç]+)")
-        matches = pattern.finditer(file_data)
-        fd = file_data.strip().split(';')
-        for match in matches:
-            print(match) """
-        return fd
+            matches = pattern.finditer(file_data)
+            fd = file_data.strip().split(';')
+            for match in matches:
+                print(match) """
+        return file_str
 
     def _create_table(self, tbl_name: str, tbl_columns: list):
         if (tbl_name and tbl_columns) is not None:
@@ -130,14 +156,10 @@ class Engine():
         else:
             raise NotImplementedError
 
-    def _data_retrieve(self, tbl_name: str):
+    def _columns_data(self, tbl_name: str = ""):
         with open(os.getcwd() + "/data/catalog.json") as f:
             c_data = f.read()
         loaded_cdata = list(loads(c_data).values())
-        with open(os.getcwd() + "/data/default/lista_frutas.csv") as f:
-            lf_data = f.read()
-        with open(os.getcwd() + "/data/default/tipo_frutas.csv") as f:
-            tf_data = f.read()
         if c_data is not None:
             cols = dict()
             for table in loaded_cdata:
@@ -147,23 +169,30 @@ class Engine():
                     for name, type in zip(cnames, ctypes):
                         ctype = Table.dtypes[type]
                         cols[name] = ctype
-        return cols, lf_data, tf_data
+        return cols
+
+    def _tables_data(self, tbl_name):
+        path = f"/data/default/{tbl_name}.csv"
+        data = ""
+        if os.path.exists(os.getcwd() + path):
+            with open(os.getcwd() + path) as f:
+                data = f.read()
+        return data
 
     def _insert_into(self, tbl_name: str, tbl_values: list):
-        cols, lf_data, tf_data = self._data_retrieve(tbl_name)
-        current_table_data = lf_data if tbl_name == "lista_frutas" else tf_data
+        cols = self._columns_data(tbl_name)
+        #print(tbl_name, tbl_values)
         if (tbl_name and tbl_values) is not None:
-            if len(current_table_data) == 0 and self.commit:
-                Table(name=tbl_name, columns=cols,
-                      data=tbl_values).save()
+            Table(name=tbl_name, columns=cols,
+                  data=tbl_values).save()
 
     def _update_table(self, tbl_name: str, update_data: dict):
-        cols, lf_data, tf_data = self._data_retrieve(tbl_name)
-        current_table_data = lf_data if tbl_name == "lista_frutas" else tf_data
+        cols = self._columns_data(tbl_name)
+        tbl_data = self._tables_data(tbl_name)
         data_values = [value.split(';')
-                       for value in current_table_data.split()]
+                       for value in tbl_data.split()]
         if (tbl_name and update_data) is not None:
-            if len(current_table_data) > 0 and self.commit:
+            if len(tbl_data) > 0:
                 for value in data_values:
                     # value[0] -> nm_fruta; value[1] -> tp_fruta
                     if update_data['where_value'] == value[0]:
