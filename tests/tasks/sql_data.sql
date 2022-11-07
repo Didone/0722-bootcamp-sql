@@ -1,4 +1,3 @@
--- Frutas
 CREATE TABLE lista_frutas (
     nm_fruta TEXT ,
     tp_fruta TEXT )

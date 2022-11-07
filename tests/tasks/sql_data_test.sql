@@ -14,9 +14,40 @@ UPDATE lista_frutas
      , tp_fruta = 'azedo'
  WHERE nm_fruta = 'mexerica';
 
- -- Tipos
+-- Tipos
 CREATE TABLE tipo_frutas (
     tp_fruta TEXT,
     vl_fruta FLOAT);
 
- COMMIT;
+INSERT INTO tipo_frutas VALUES ('doce',1.5);
+INSERT INTO tipo_frutas VALUES ('azedo',2.3);
+INSERT INTO tipo_frutas VALUES ('amargo',2.0);
+
+-- Atualiza o valor das frutas azedas
+UPDATE tipo_frutas
+   SET vl_fruta = 2.5
+ WHERE tp_fruta = 'azedo';
+
+-- Vendas
+CREATE TABLE venda_frutas (
+    cod_venda INTEGER,
+    nm_fruta TEXT,
+    qtd_venda INTEGER);
+INSERT INTO venda_frutas VALUES (1,'banana',10);
+INSERT INTO venda_frutas VALUES (2,'banana',12);
+INSERT INTO venda_frutas VALUES (3,'limão',5);
+INSERT INTO venda_frutas VALUES (4,'banana',8);
+INSERT INTO venda_frutas VALUES (5,'limão',8);
+
+-- Altera o tipo da fruta 'limão' para 'azedo'
+UPDATE lista_frutas
+   SET tp_fruta = 'azedo'
+ WHERE nm_fruta = 'limão';
+
+-- Altera a quantidade vendida da venda 3 para 20
+UPDATE venda_frutas
+   SET qtd_venda = 20
+ WHERE cod_venda = 3;
+
+-- Salva todas as alterações
+COMMIT;
