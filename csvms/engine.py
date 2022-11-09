@@ -35,7 +35,6 @@ class Engine():
             if not self.commit:
                 statement = sql_str.lower().split()[0]
                 statement_history.append(statement)
-                # print(sql_str)
             if sql_str != "":
                 ast = parse(sql_str)
                 modifying_for_extraction = statement + \
@@ -148,6 +147,46 @@ class Engine():
                             for delete_name in delete_name_list:
                                 print(
                                     f"O registro solicitado foi excluido de {delete_name} com sucesso!\n")
+                if statement == 'select':
+                    select_query = ast['select']
+                    from_table = ast['from']
+                    self.sql_select(
+                        tbl_name=from_table,
+                        select=select_query
+                    )
+                    """ except ValueError:
+                        print("Erro. Query não executada.")
+                    else:
+                        print("Query executada com sucesso.") """
+
+    def sql_select(self, tbl_name: str, select: str):
+        # print(tbl_name, select)
+        cols = self._columns_data(tbl_name)
+        tbl_data = self._tables_data(tbl_name)
+        tbl_data_list = [value.split(';') for value in tbl_data.split()]
+        if select == "*":
+            result = self.sql_creating_table_presentation(
+                tbl_columns=cols, tbl_data=tbl_data_list)
+        print(result)
+
+    def sql_creating_table_presentation(self, tbl_columns: dict, tbl_data: list):
+        temp_max_list, max_list, max_values = [], [], []
+        tbl_head_1, tbl_head_2 = " ", " "
+        tbl_body_1, tbl_body_2, tbl_body_full = "", "", ""
+        for col in tbl_columns:
+            tbl_head_1 += "+" + "-"*(len(col) + 1)
+            tbl_head_2 += f"|{col} "
+        tbl_head_1 += "+\n"
+        tbl_head_2 += "|\n"
+        for pos, values in enumerate(tbl_data):
+            tbl_body_1 = f"{pos}|"
+            for col, value in zip(tbl_columns, values):
+                diff_len = (len(col) + 1) - len(value)
+                tbl_body_2 += " " * (diff_len) + f"{value}|"
+            tbl_body_full += tbl_body_1 + tbl_body_2 + "\n"
+            tbl_body_2 = ""
+        tbl = tbl_head_1 + tbl_head_2 + tbl_head_1 + tbl_body_full + tbl_head_1
+        return tbl
 
     def sql_file_recovering(self, name: str):
         try:
