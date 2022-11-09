@@ -11,6 +11,5 @@ __pycache__
 # Temp files
 data/
 tmp.py
-*.ipynb
 csvms/extended.py
 tests/test_scripts.py
