@@ -150,27 +150,140 @@ class Engine():
                 if statement == 'select':
                     select_query = ast['select']
                     from_table = ast['from']
-                    self.sql_select(
-                        tbl_name=from_table,
-                        select=select_query
-                    )
-                    """ except ValueError:
+                    if "where" in ast:
+                        where_query = ast['where']
+                    else:
+                        where_query = []
+                    try:
+                        self.sql_query(
+                            from_clause=from_table,
+                            select=select_query,
+                            where=where_query
+                        )
+                    except:
                         print("Erro. Query não executada.")
                     else:
-                        print("Query executada com sucesso.") """
+                        print("Query executada com sucesso.")
 
-    def sql_select(self, tbl_name: str, select: str):
-        # print(tbl_name, select)
-        cols = self._columns_data(tbl_name)
-        tbl_data = self._tables_data(tbl_name)
-        tbl_data_list = [value.split(';') for value in tbl_data.split()]
-        if select == "*":
-            result = self.sql_creating_table_presentation(
-                tbl_columns=cols, tbl_data=tbl_data_list)
+    def sql_query(self, from_clause: list, select: list, where: list):
+        tbls_name, cols_name, tbls_pos = [], [], []
+        cols_list = []
+        col_dict = {}
+        default_table = {}
+
+        if isinstance(from_clause, list):
+            for value in select:
+                for pos, tbl_name in enumerate(from_clause):
+                    tbl_alias = tbl_name['name']
+                    if value['value'][0] == tbl_alias:
+                        tbls_name.append(tbl_name['value'])
+                        tbls_pos.append(pos)
+                        cols_name.append(value['value'])
+        else:
+            tbls_name = [from_clause]
+        for name in tbls_name:
+            cols = self._columns_data(name)
+            cols_list.append(cols)
+            tbl_data = self._tables_data(name)
+            tbl_data_list = [value.split(';') for value in tbl_data.split()]
+            for pos, col in enumerate(cols):
+                for data in tbl_data_list:
+                    if len(col_dict) > 0 and col in col_dict.keys():
+                        col_dict[col] += [data[pos]]
+                    else:
+                        col_dict[col] = [data[pos]]
+            default_table[name] = col_dict
+            col_dict = {}
+        if where:
+            tbl_values_keys = []
+            cols_values = []
+            temp_set = set()
+            values_tbl = default_table.values()
+            rep_values, tbl_1, tbl_2, temp_col_val = [], [], [], []
+            new_col_val, cols = {}, {}
+            for value in values_tbl:
+                tbl_values_keys.extend(value)
+            inter_column = list(set(
+                [x for x in tbl_values_keys if tbl_values_keys.count(x) > 1]))
+            for values in values_tbl:
+                cols_values.append(set(values[inter_column[0]]))
+            for values in cols_values:
+                if len(temp_set) > 0:
+                    if len(values) > len(temp_set):
+                        diff_value = list(values - temp_set)[0]
+                    else:
+                        diff_value = list(temp_set - values)[0]
+                temp_set = values
+            for key, values in default_table.items():
+                if diff_value in values[inter_column[0]]:
+                    remove_value_pos = values[inter_column[0]].index(
+                        diff_value)
+                    tbl_name = key
+            for key, values in default_table.items():
+                if key == tbl_name:
+                    for value in list(values.values()):
+                        del value[remove_value_pos]
+            pos = 0
+            while len(tbl_1) == 0 or len(tbl_2) == 0:
+                for key, values in default_table.items():
+                    if tbls_pos[pos] == max(tbls_pos) and tbls_name[pos] == key:
+                        tbl_2.extend(values[inter_column[0]])
+                        for k_values in values:
+                            if k_values != inter_column[0]:
+                                temp_col_val.extend(
+                                    values[k_values])
+                                col_name = k_values
+                                tbl_name = key
+                    if tbls_pos[pos] == min(tbls_pos) and tbls_name[pos] == key:
+                        tbl_1.extend(values[inter_column[0]])
+                pos = 1 if pos == 0 else 0
+            if len(tbl_2) > 0 and len(tbl_1) > 0:
+                for val_1 in tbl_1:
+                    for val_2 in tbl_2:
+                        if val_1 == val_2:
+                            idx = tbl_2.index(val_2)
+                            rep_values.append(idx)
+            for idx_val in rep_values:
+                if len(new_col_val) > 0:
+                    new_col_val[col_name] += [temp_col_val[idx_val]]
+                else:
+                    new_col_val[col_name] = [temp_col_val[idx_val]]
+            default_table[tbl_name][col_name] = new_col_val[col_name]
+            for fc_value in from_clause:
+                for s_value in select:
+                    if s_value['value'][0] == fc_value['name']:
+                        col_alias_len = len(fc_value['name']) + 1
+                        col_name = s_value['value'][col_alias_len:]
+                        col_alias = s_value['name']
+                        if 'name' in s_value:
+                            default_table[fc_value['value']][col_alias] = default_table[fc_value['value']].pop(
+                                col_name)
+                            for col in cols_list:
+                                if col_name in col:
+                                    cols[col_alias] = col[col_name]
+                del default_table[fc_value['value']][inter_column[0]]
+            final_table = default_table
+            tbl_values = list(final_table.values())
+            tbl_data_list = []
+            temp_val_list = []
+            temp_val_dict = {}
+            for values in tbl_values:
+                for key, vals in values.items():
+                    temp_val_list.append(vals)
+            for values in temp_val_list:
+                for pos, val in enumerate(values):
+                    if len(temp_val_dict) > 0 and pos in temp_val_dict.keys():
+                        temp_val_dict[pos] += [val]
+                    else:
+                        temp_val_dict[pos] = [val]
+            for val in temp_val_dict.values():
+                tbl_data_list.append(val)
+
+        result = self.sql_creating_table_presentation(
+            tbl_columns=cols, tbl_data=tbl_data_list)
         print(result)
 
     def sql_creating_table_presentation(self, tbl_columns: dict, tbl_data: list):
-        temp_max_list, max_list, max_values = [], [], []
         tbl_head_1, tbl_head_2 = " ", " "
         tbl_body_1, tbl_body_2, tbl_body_full = "", "", ""
         for col in tbl_columns:
